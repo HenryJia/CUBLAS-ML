@@ -35,13 +35,12 @@ int main(int argc, char **argv)
 	nn.normaliseData();
 	nn.normaliseValidateData();
 	nn.normalisePredictData();
-	/*nn.setAlpha(0.00025);
+	nn.setAlpha(0.00025);
 	nn.setIters(1000000);
 	nn.setClassify(false);
-	nn.setThreads(15); //Optimum for stock clock AMD FX-6100
-	vector<int> layers = {10, 40, 160, 1};
-	nn.setLayers(layers);
-	float concurrentTime = nn.trainConcurrent();
+	int layers[4] = {10, 40, 160, 1}; //The bias unit is auto added by the class.
+	//nn.setLayers(layers, 4); //This will random initialise the weights
+	/*float concurrentTime = nn.trainConcurrent();
 	cout << "Concurrent Training " << concurrentTime << " s" << endl;
 	nn.validate();
 	cout << "Write CSV" << endl;

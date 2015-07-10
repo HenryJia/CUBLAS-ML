@@ -8,10 +8,34 @@
 
 cublasNN::cublasNN()
 {
+	xOld = false;
+	xValidateOld = false;
+	xPredictOld = false;
+	xGPUOld = false;
+	xValidateGPUOld = false;
+	xPredictGPUOld = false;
+	thetaBaseGPUOld = false;
 }
 
 cublasNN::~cublasNN()
 {
+	/*CPU Pointers to free
+	* layers
+	* x;
+	* xValidate;
+	* xPredict;
+	* y;
+	* yValidate;
+	**/
+	/*GPU Pointers to free
+	* xGPU;
+	* xValidateGPU;
+	* xPredictGPU;
+	* yGPU;
+	* yValidateGPU;
+	* thetaBaseGPU;
+	* 
+	**/
 }
 
 vector<vector<float>> cublasNN::readCSV(string fileName, bool header, float &time)
@@ -54,7 +78,7 @@ float* cublasNN::vector2dToMat(vector<vector<float>> data)
 	size_t a = data.size();
 	size_t b = data[0].size();
 
-	mat = (float*)malloc(a * b * sizeof(float));
+	mat = (float*)malloc(a * b * sizeof(*mat));
 	for(size_t i = 0; i < a; i++)
 		for(size_t j = 0; j < b; j++)
 			mat[IDX2C(j, i, b)] = data[i][j];
@@ -72,6 +96,11 @@ void cublasNN::setData(vector<vector<float>> xVec, vector<vector<float>> yVec)
 			cout << xVec[i][j] << '\t';
 		cout << endl;
 	}*/
+	if(xOld)
+	{
+		free(x);
+		free(y);
+	}
 	x = vector2dToMat(xVec);
 	/*for(size_t i = 0; i < 10; i++)
 	{
@@ -80,21 +109,45 @@ void cublasNN::setData(vector<vector<float>> xVec, vector<vector<float>> yVec)
 		cout << endl;
 	}*/
 	y = vector2dToMat(yVec);
+	xOld = true;
+	/*For loading into GPU
+	 * if(xGPUOld)
+	{
+		cudaFree(xGPU);
+		cudaFree(yGPU);
+	}
+	cudaStat = cudaMalloc ((void**)&xGPU, m * n * sizeof(*x));
+	if (cudaStat != cudaSuccess)
+	{
+		cout << "device memory allocation failed" << endl;
+		return;
+	}
+	 * Unfinished
+	 **/
 }
 
 void cublasNN::setValidateData(vector<vector<float>> xVec, vector<vector<float>> yVec)
 {
 	mValidate = xVec.size();
 	nValidate = xVec[0].size();
+	if(xValidateOld)
+	{
+		free(xValidate);
+		free(yValidate);
+	}
 	xValidate = vector2dToMat(xVec);
 	yValidate = vector2dToMat(yVec);
+	xValidateOld = true;
 }
 
 void cublasNN::setPredictData(vector<vector<float>> xVec)
 {
 	mPredict = xVec.size();
 	nPredict = xVec[0].size();
+	if(xPredictOld)
+		free(xPredict);
 	xPredict = vector2dToMat(xVec);
+	xPredictOld = true;
 }
 
 void cublasNN::normalise(float* data, size_t a, size_t b)
@@ -128,7 +181,12 @@ float* cublasNN::mean(float* data, size_t a, size_t b)
 {
 	float* result;
 
-	result = (float*)malloc(b * sizeof(float));
+	result = (float*)malloc(b * sizeof(*result));
+	if(!result)
+	{
+		cout << "Malloc Failed" << endl;
+		return;
+	}
 
 	for(size_t i = 0; i < b; i++)
 		result[i] = 0;
@@ -147,7 +205,13 @@ float* cublasNN::stddev(float* data, float* mean, size_t a, size_t b)
 {
 	float* result;
 
-	result = (float*)malloc(b * sizeof(float));
+	result = (float*)malloc(b * sizeof(*result));
+	if(!result)
+	{
+		cout << "Malloc Failed" << endl;
+		return;
+	}
+
 
 	for(size_t i = 0; i < b; i++)
 		result[i] = 0;
@@ -170,7 +234,41 @@ float* cublasNN::stddev(float* data, float* mean, size_t a, size_t b)
 	return result;
 }
 
+void cublasNN::setLayers(int* l, size_t lNum)
+{
+	layerNum = lNum;
+	layers = (int*)malloc(layerNum * sizeof(*layers));
+	if(!layers)
+	{
+		cout << "Malloc Failed" << endl;
+		return;
+	}
 
+	// To Randomly Initialise The Weights
+	int totalSize = 0;
+	for(size_t i = 0; i < (l.size() - 1); i++)
+		totalSize += (l[i] + 1) * l[i + 1];
+	if(thetaBaseGPUOld)
+		cudaFree(thetaBaseGPU);
+	cudaStat = cudaMalloc((void**)&thetaBaseGPU, totalSize * sizeof(float));
+	if (cudaStat != cudaSuccess)
+	{
+		cout << "cudaMalloc Failed" << endl;
+		return;
+	}
+	thetaBaseGPUOld = true
+
+	float epsilon = sqrt(6) / sqrt(1 + in + out);
+
+	/*vector<Mat> m;
+	for(size_t i = 0; i < (l.size() - 1); i++)
+	{
+		m.push_back(randInitialiseWeights(l[i], l[i + 1]));
+	}
+	theta = m;*/
+
+	
+}
 /*Mat cublasNN::randInitialiseWeights(int in, int out)
 {
 	float epsilon = sqrt(6) / sqrt(1 + in + out);

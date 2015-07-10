@@ -25,6 +25,11 @@ public:
 	void setData(vector<vector<float>> xVec, vector<vector<float>> yVec);
 	void setValidateData(vector<vector<float>> xVec, vector<vector<float>> yVec);
 	void setPredictData(vector<vector<float>> xVec);
+	void setLayers(int* layers, size_t lNum);
+	void setClassify(bool c) { classification = c; }
+	void setAlpha(double a) { alpha = a; }
+	void setIters(int i) { iters = i; }
+	void setLambda(int l) { lambda = l; }
 	void normaliseData() { normalise(x, m, n); }
 	void normaliseValidateData() { normalise(xValidate, mValidate, nValidate); }
 	void normalisePredictData() { normalise(xPredict, mValidate, nValidate); }
@@ -45,19 +50,34 @@ private:
 	float lambda;
 	float JValidate;
 	int iters;
-	size_t threads;
 	size_t layerNum;
 	float* x;
 	float* xValidate;
 	float* xPredict;
 	float* y;
 	float* yValidate;
-	vector<float*> theta;
-	vector<int> layers;
+	float* xGPU;
+	float* xValidateGPU;
+	float* xPredictGPU;
+	float* yGPU;
+	float* yValidateGPU;
+	float* thetaBaseGPU;
+	bool xOld;
+	bool xValidateOld;
+	bool xPredictOld;
+	bool xGPUOld;
+	bool xValidateGPUOld;
+	bool xPredictGPUOld;
+	bool thetaBaseGPUOld;
+	int* layers;
 	vector<float> J;
 	vector<float> JBatch;
 	vector<thread> t;
 	bool classification;
+
+	cudaError_t cudaStat;    
+	cublasStatus_t stat;
+	cublasHandle_t handle;
 
 	size_t m;
 	size_t mValidate;
