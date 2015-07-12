@@ -10,15 +10,15 @@ int main(int argc, char **argv)
 	cout << "Read CSV" << endl;
 	float csvTime = 0;
 	float csvTime2 = 0;
-	vector<vector<float>> xVec = nn.readCSV("trainP7_1.csv", false, csvTime2);
+	vector<vector<float>> xVec = nn.readCSV("../bikeshare/trainP7_1.csv", false, csvTime2);
 	csvTime += csvTime2;
-	vector<vector<float>> yVec = nn.readCSV("trainYP2_1.csv", false, csvTime2);
+	vector<vector<float>> yVec = nn.readCSV("../bikeshare/trainYP2_1.csv", false, csvTime2);
 	csvTime += csvTime2;
-	vector<vector<float>> xVecValidate = nn.readCSV("validateP7_1.csv", false, csvTime2);
+	vector<vector<float>> xVecValidate = nn.readCSV("../bikeshare/validateP7_1.csv", false, csvTime2);
 	csvTime += csvTime2;
-	vector<vector<float>> yVecValidate = nn.readCSV("validateY1.csv", false, csvTime2);
+	vector<vector<float>> yVecValidate = nn.readCSV("../bikeshare/validateY1.csv", false, csvTime2);
 	csvTime += csvTime2;
-	vector<vector<float>> xVecPredict = nn.readCSV("testPF1_1.csv", false, csvTime2);
+	vector<vector<float>> xVecPredict = nn.readCSV("../bikeshare/testPF1_1.csv", false, csvTime2);
 	csvTime += csvTime2;
 	cout << csvTime << " s" << endl;
 
@@ -39,7 +39,7 @@ int main(int argc, char **argv)
 	nn.setIters(1000000);
 	nn.setClassify(false);
 	int layers[4] = {10, 40, 160, 1}; //The bias unit is auto added by the class.
-	//nn.setLayers(layers, 4); //This will random initialise the weights
+	nn.setLayers(layers, 4); //This will random initialise the weights
 	/*float concurrentTime = nn.trainConcurrent();
 	cout << "Concurrent Training " << concurrentTime << " s" << endl;
 	nn.validate();

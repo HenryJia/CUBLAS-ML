@@ -1,4 +1,5 @@
 #include "cublasNN.h"
+#include "kernels.h"
 
 #include <math.h>
 #include <chrono>
@@ -15,6 +16,9 @@ cublasNN::cublasNN()
 	xValidateGPUOld = false;
 	xPredictGPUOld = false;
 	thetaBaseGPUOld = false;
+
+	cublasCreate(&handle);
+	curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
 }
 
 cublasNN::~cublasNN()
@@ -27,6 +31,12 @@ cublasNN::~cublasNN()
 	* y;
 	* yValidate;
 	**/
+	free(layers);
+	free(x);
+	free(xValidate);
+	free(xPredict);
+	free(y);
+	free(yValidate);
 	/*GPU Pointers to free
 	* xGPU;
 	* xValidateGPU;
@@ -34,8 +44,11 @@ cublasNN::~cublasNN()
 	* yGPU;
 	* yValidateGPU;
 	* thetaBaseGPU;
-	* 
+	* thetaPos
+	* thetaSize
 	**/
+	cudaFree(thetaBaseGPU);
+	cublasDestroy(handle);
 }
 
 vector<vector<float>> cublasNN::readCSV(string fileName, bool header, float &time)
@@ -75,13 +88,13 @@ vector<vector<float>> cublasNN::readCSV(string fileName, bool header, float &tim
 float* cublasNN::vector2dToMat(vector<vector<float>> data)
 {
 	float* mat;
-	size_t a = data.size();
-	size_t b = data[0].size();
+	int a = data.size();
+	int b = data[0].size();
 
 	mat = (float*)malloc(a * b * sizeof(*mat));
-	for(size_t i = 0; i < a; i++)
-		for(size_t j = 0; j < b; j++)
-			mat[IDX2C(j, i, b)] = data[i][j];
+	for(int i = 0; i < a; i++)
+		for(int j = 0; j < b; j++)
+			mat[IDX2C(i, j, a)] = data[i][j];
 
 	return mat;
 }
@@ -90,9 +103,9 @@ void cublasNN::setData(vector<vector<float>> xVec, vector<vector<float>> yVec)
 {
 	m = xVec.size();
 	n = xVec[0].size();
-	/*for(size_t i = 0; i < 10; i++)
+	/*for(int i = 0; i < 10; i++)
 	{
-		for(size_t j = 0; j < n; j++)
+		for(int j = 0; j < n; j++)
 			cout << xVec[i][j] << '\t';
 		cout << endl;
 	}*/
@@ -102,9 +115,9 @@ void cublasNN::setData(vector<vector<float>> xVec, vector<vector<float>> yVec)
 		free(y);
 	}
 	x = vector2dToMat(xVec);
-	/*for(size_t i = 0; i < 10; i++)
+	/*for(int i = 0; i < 10; i++)
 	{
-		for(size_t j = 0; j < n; j++)
+		for(int j = 0; j < n; j++)
 			cout << x[IDX2C(j, i, n)] << '\t';
 		cout << endl;
 	}*/
@@ -150,34 +163,34 @@ void cublasNN::setPredictData(vector<vector<float>> xVec)
 	xPredictOld = true;
 }
 
-void cublasNN::normalise(float* data, size_t a, size_t b)
+void cublasNN::normalise(float* data, int a, int b)
 {
 	float* Mean;
 	float* Stddev;
 	Mean = mean(data, a, b);
 	Stddev = stddev(data, Mean, a, b);
 
-	for(size_t i = 0; i < a; i++)
+	for(int i = 0; i < a; i++)
 	{
-		for(size_t j = 0; j < b; j++)
+		for(int j = 0; j < b; j++)
 		{
-			data[IDX2C(j, i, b)] = data[IDX2C(j, i, b)] - Mean[j];
-			data[IDX2C(j, i, b)] = data[IDX2C(j, i, b)] / Stddev[j];
+			data[IDX2C(i, j, a)] = data[IDX2C(i, j, a)] - Mean[j];
+			data[IDX2C(i, j, a)] = data[IDX2C(i, j, a)] / Stddev[j];
 		}
 	}
 	free(Mean);
 	free(Stddev);
 
-	for(size_t i = 0; i < 5; i++)
+	/*for(int i = 0; i < 5; i++)
 	{
-		for(size_t j = 0; j < 5; j++)
-			cout << x[IDX2C(j, i, n)] << '\t';
+		for(int j = 0; j < 5; j++)
+			cout << x[IDX2C(i, j, a)] << '\t';
 		cout << endl;
 	}
-	cout << endl;
+	cout << endl;*/
 }
 
-float* cublasNN::mean(float* data, size_t a, size_t b)
+float* cublasNN::mean(float* data, int a, int b)
 {
 	float* result;
 
@@ -185,23 +198,23 @@ float* cublasNN::mean(float* data, size_t a, size_t b)
 	if(!result)
 	{
 		cout << "Malloc Failed" << endl;
-		return;
+		return nullptr;
 	}
 
-	for(size_t i = 0; i < b; i++)
+	for(int i = 0; i < b; i++)
 		result[i] = 0;
 
-	for(size_t i = 0; i < a; i++)
-		for(size_t j = 0; j < b; j++)
-			result[j] += data[IDX2C(j, i, b)];
+	for(int i = 0; i < a; i++)
+		for(int j = 0; j < b; j++)
+			result[j] += data[IDX2C(i, j, a)];
 
-	for(size_t i = 0; i < b; i++)
+	for(int i = 0; i < b; i++)
 		result[i] /= a;
 
 	return result;
 }
 
-float* cublasNN::stddev(float* data, float* mean, size_t a, size_t b)
+float* cublasNN::stddev(float* data, float* mean, int a, int b)
 {
 	float* result;
 
@@ -209,23 +222,22 @@ float* cublasNN::stddev(float* data, float* mean, size_t a, size_t b)
 	if(!result)
 	{
 		cout << "Malloc Failed" << endl;
-		return;
+		return nullptr;
 	}
 
-
-	for(size_t i = 0; i < b; i++)
+	for(int i = 0; i < b; i++)
 		result[i] = 0;
 
-	for(size_t i = 0; i < a; i++)
+	for(int i = 0; i < a; i++)
 	{
-		for(size_t j = 0; j < b; j++)
+		for(int j = 0; j < b; j++)
 		{
-			float diff = data[IDX2C(j, i, b)] - mean[j];
+			float diff = data[IDX2C(i, j, a)] - mean[j];
 			result[j] += diff * diff;
 		}
 	}
 
-	for(size_t i = 0; i < b; i++)
+	for(int i = 0; i < b; i++)
 	{
 		result[i] /= (a - 1);
 		result[i] = sqrt(result[i]);
@@ -234,7 +246,7 @@ float* cublasNN::stddev(float* data, float* mean, size_t a, size_t b)
 	return result;
 }
 
-void cublasNN::setLayers(int* l, size_t lNum)
+void cublasNN::setLayers(int* l, int lNum)
 {
 	layerNum = lNum;
 	layers = (int*)malloc(layerNum * sizeof(*layers));
@@ -245,29 +257,63 @@ void cublasNN::setLayers(int* l, size_t lNum)
 	}
 
 	// To Randomly Initialise The Weights
-	int totalSize = 0;
-	for(size_t i = 0; i < (l.size() - 1); i++)
-		totalSize += (l[i] + 1) * l[i + 1];
+	totalThetaSize = 0;
+	thetaPos = (int*)malloc((layerNum - 1) * sizeof(*thetaPos));
+	thetaSize = (int*)malloc((layerNum - 1) * sizeof(*thetaSize));
+	if(!thetaPos || !thetaSize)
+	{
+		cout << "Malloc Failed" << endl;
+		return;
+	}
+	thetaPos[0] = 0;
+	for(int i = 0; i < (layerNum - 1); i++)
+	{
+		int in = l[i] + 1;
+		int out = l[i + 1];
+		thetaSize[i] = in * out;
+		totalThetaSize += thetaSize[i];
+		if(i < (layerNum - 2))
+			thetaPos[i + 1] = totalThetaSize;
+		cout << thetaSize[i] << endl;
+		cout << thetaPos[i] << endl << endl;
+	}
 	if(thetaBaseGPUOld)
 		cudaFree(thetaBaseGPU);
-	cudaStat = cudaMalloc((void**)&thetaBaseGPU, totalSize * sizeof(float));
+
+	cudaStat = cudaMalloc((void**)&thetaBaseGPU, totalThetaSize * sizeof(float));
 	if (cudaStat != cudaSuccess)
 	{
 		cout << "cudaMalloc Failed" << endl;
 		return;
 	}
-	thetaBaseGPUOld = true
+	thetaBaseGPUOld = true;
 
-	float epsilon = sqrt(6) / sqrt(1 + in + out);
-
-	/*vector<Mat> m;
-	for(size_t i = 0; i < (l.size() - 1); i++)
+	curandGenerateUniform(gen, thetaBaseGPU, totalThetaSize);
+	for(int i = 0; i < (layerNum - 1); i++)
 	{
-		m.push_back(randInitialiseWeights(l[i], l[i + 1]));
+		int in = l[i] + 1;
+		int out = l[i + 1];
+		float epsilon = (sqrt(6) / sqrt(in + out));
+		float epsilon2 = 2 * epsilon;
+		float negEpsilon = -epsilon;
+		float* theta = thetaBaseGPU + thetaPos[i];
+		cublasSscal(handle, thetaSize[i], &epsilon2, theta, 1);
+		scaVecAdd(theta, negEpsilon, theta, thetaSize[i]);
+		absVec(theta, theta, thetaSize[i]);
+		/*temp = (float *)malloc(thetaSize[i] * sizeof(float)); Debug Code
+		cudaMemcpy(temp, theta, thetaSize[i] * sizeof(float), cudaMemcpyDeviceToHost);
+		int t = 5;
+		if(i == 2)
+			t = 1;
+		for(int i = 0; i < 5; i++)
+		{
+			for(int j = 0; j < t; j++)
+				cout << temp[IDX2C(i, j, in)] << '\t';
+			cout << endl;
+		}
+		cout << endl;
+		free(temp); */
 	}
-	theta = m;*/
-
-	
 }
 /*Mat cublasNN::randInitialiseWeights(int in, int out)
 {
@@ -280,4 +326,21 @@ void cublasNN::setLayers(int* l, size_t lNum)
 	weights = abs(weights * 2 * epsilon - epsilon);
 
 	return weights;
+}*/
+
+/*float* cublasNN::onesGPU(int size)
+{
+	float *o;
+	const float one = 1.0f;
+	const int* one_bits = reinterpret_cast<const int*>(&one);
+	cudaMalloc((void **)&o, size * sizeof(float));
+	cuMemsetD32(CUdeviceptr(o), *one_bits, size);
+	return o;
+}
+
+void cublasNN::scaladdGPU(float* a, float b, int aSize)
+{
+	float *vec = onesGPU(aSize);
+	cublasSaxpy(handle, aSize, &b, vec, 1, a, 1);
+	cudaFree(vec);
 }*/

@@ -7,11 +7,14 @@
 
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include <cuda.h>
 #include <curand.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifndef IDX2CS
 #define IDX2C(i,j,ld) (((j)*(ld))+(i)) // i is column, j is row, ld is total number of columns
+#endif
 
 using namespace std;
 
@@ -25,7 +28,7 @@ public:
 	void setData(vector<vector<float>> xVec, vector<vector<float>> yVec);
 	void setValidateData(vector<vector<float>> xVec, vector<vector<float>> yVec);
 	void setPredictData(vector<vector<float>> xVec);
-	void setLayers(int* layers, size_t lNum);
+	void setLayers(int* layers, int lNum);
 	void setClassify(bool c) { classification = c; }
 	void setAlpha(double a) { alpha = a; }
 	void setIters(int i) { iters = i; }
@@ -35,22 +38,32 @@ public:
 	void normalisePredictData() { normalise(xPredict, mValidate, nValidate); }
 private:
 	float* vector2dToMat(vector<vector<float>> data);
-	void normalise(float* data, size_t a, size_t b);
-	float* mean(float* data, size_t a, size_t b);
-	float* stddev(float* data, float* mean, size_t a, size_t b);
+	void normalise(float* data, int a, int b);
+	float writeCSV(string fileName, float* data);
+
+	// CPU Linear Algebra Functions
+	float* mean(float* data, int a, int b);
+	float* stddev(float* data, float* mean, int a, int b);
 	//float trainFuncApprox();
 	//float trainConcurrentFuncApprox();
 
 	//float* randInitialiseWeights(int in, int out);
+	// GPU Linear Algebra Functions
+	float* onesGPU(int size);
+	void scaladdGPU(float* a, float b, int aSize);
 	float* sigmoid(float* data);
 	float* sigmoidGradient(float* data);
-	float writeCSV(string fileName, float* data);
 
 	float alpha;
 	float lambda;
 	float JValidate;
 	int iters;
-	size_t layerNum;
+	int layerNum;
+	int totalThetaSize;
+
+	float* tempGPU;
+	float* temp;
+
 	float* x;
 	float* xValidate;
 	float* xPredict;
@@ -61,7 +74,11 @@ private:
 	float* xPredictGPU;
 	float* yGPU;
 	float* yValidateGPU;
+
 	float* thetaBaseGPU;
+	int* thetaPos;
+	int* thetaSize;
+
 	bool xOld;
 	bool xValidateOld;
 	bool xPredictOld;
@@ -78,6 +95,7 @@ private:
 	cudaError_t cudaStat;    
 	cublasStatus_t stat;
 	cublasHandle_t handle;
+	curandGenerator_t gen;
 
 	size_t m;
 	size_t mValidate;

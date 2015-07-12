@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CodeLite_Project Name="CUBLAS-ML" InternalType="Console">
   <Plugins>
+    <Plugin Name="qmake">
+      <![CDATA[00010001N0005Debug000000000000]]>
+    </Plugin>
     <Plugin Name="CMakePlugin">
       <![CDATA[[{
   "name": "Debug",
@@ -13,9 +16,6 @@
   "parentProject": ""
  }]]]>
     </Plugin>
-    <Plugin Name="qmake">
-      <![CDATA[00010001N0005Debug000000000000]]>
-    </Plugin>
   </Plugins>
   <Description/>
   <Dependencies/>
@@ -23,6 +23,8 @@
     <File Name="main.cpp"/>
     <File Name="cublasNN.h"/>
     <File Name="cublasNN.cpp"/>
+    <File Name="kernels.cu"/>
+    <File Name="kernels.h"/>
   </VirtualDirectory>
   <Settings Type="Executable">
     <GlobalSettings>
@@ -38,14 +40,16 @@
       <Compiler Options="-g;-O1;-O;-O3;-O0;-O2;-std=c++11;-Wall;-I /opt/cuda/lib64/;-I /opt/cuda/include/;" C_Options="-g;-O1;-O;-O3;-O0;-O2;-std=c++11;-Wall;-I /opt/cuda/lib64/;-I /opt/cuda/include/;" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0">
         <IncludePath Value="."/>
       </Compiler>
-      <Linker Options="" Required="yes">
+      <Linker Options="./Debug/kernels.cu.o;" Required="yes">
         <LibraryPath Value="/opt/cuda/lib64/"/>
         <Library Value="cuda"/>
         <Library Value="cudart"/>
         <Library Value="curand"/>
         <Library Value="cublas"/>
       </Linker>
-      <ResourceCompiler Options="" Required="no"/>
+      <ResourceCompiler Options="" Required="no">
+        <IncludePath Value="Debug/"/>
+      </ResourceCompiler>
       <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Debug" Command="./$(ProjectName)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>
@@ -55,7 +59,11 @@
         <PostConnectCommands/>
         <StartupCommands/>
       </Debugger>
-      <PreBuild/>
+      <PreBuild>
+        <Command Enabled="yes">mkdir -p ./Debug/</Command>
+        <Command Enabled="yes"/>
+        <Command Enabled="yes">nvcc -c kernels.cu -o ./Debug/kernels.cu.o</Command>
+      </PreBuild>
       <PostBuild/>
       <CustomBuild Enabled="no">
         <RebuildCommand/>

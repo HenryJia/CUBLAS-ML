@@ -1,0 +1,37 @@
+#include "kernels.h"
+
+#define CC 53
+#define NUM_BLOCKS 32
+#define BLOCK_THREADS 64
+
+#ifndef IDX2C
+#define IDX2C(i,j,ld) (((j)*(ld))+(i)) // i is column, j is row, ld is total number of columns
+#endif
+
+/*
+ * Definitions
+ */
+
+__global__ void kernelScaVecAdd(const float* A, const float alpha, float* B, int M)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i < M)
+		B[i] = A[i] + alpha;
+}
+
+__global__ void kernelAbsVec(const float* A, float* B, int M)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i < M)
+		B[i] = abs(A[i]);
+}
+
+void scaVecAdd(const float* A, const float alpha, float* B, int M)
+{
+	kernelScaVecAdd<<<NUM_BLOCKS, BLOCK_THREADS>>>(A, alpha, B, M);
+}
+
+void absVec(const float* A, float* B, int M)
+{
+	kernelAbsVec<<<NUM_BLOCKS, BLOCK_THREADS>>>(A, B, M);
+}

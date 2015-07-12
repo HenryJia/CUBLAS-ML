@@ -13,7 +13,7 @@ CurrentFileName        :=
 CurrentFilePath        :=
 CurrentFileFullPath    :=
 User                   :=
-Date                   :=10/07/15
+Date                   :=12/07/15
 CodeLitePath           :="/home/henry/.codelite"
 LinkerName             :=/usr/bin/g++
 SharedObjectLinkerName :=/usr/bin/g++ -shared -fPIC
@@ -35,10 +35,10 @@ PreprocessOnlySwitch   :=-E
 ObjectsFileList        :="CUBLAS-ML.txt"
 PCHCompileFlags        :=
 MakeDirCommand         :=mkdir -p
-LinkOptions            :=  
+LinkOptions            :=  ./Debug/kernels.cu.o 
 IncludePath            :=  $(IncludeSwitch). $(IncludeSwitch). 
 IncludePCH             := 
-RcIncludePath          := 
+RcIncludePath          := $(IncludeSwitch)Debug/ 
 Libs                   := $(LibrarySwitch)cuda $(LibrarySwitch)cudart $(LibrarySwitch)curand $(LibrarySwitch)cublas 
 ArLibs                 :=  "cuda" "cudart" "curand" "cublas" 
 LibPath                := $(LibraryPathSwitch). $(LibraryPathSwitch)/opt/cuda/lib64/ 
@@ -82,6 +82,11 @@ $(IntermediateDirectory)/.d:
 	@test -d ./Debug || $(MakeDirCommand) ./Debug
 
 PreBuild:
+	@echo Executing Pre Build commands ...
+	mkdir -p ./Debug/
+	
+	nvcc -c kernels.cu -o ./Debug/kernels.cu.o
+	@echo Done
 
 
 ##
