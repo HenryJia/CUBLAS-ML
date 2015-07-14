@@ -36,6 +36,9 @@ public:
 	void normaliseData() { normalise(x, m, n); }
 	void normaliseValidateData() { normalise(xValidate, mValidate, nValidate); }
 	void normalisePredictData() { normalise(xPredict, mValidate, nValidate); }
+	void addBiasX() { float* temp = addBias(x, m, n); free(x); x = temp; }
+	void addBiasValidate() { float* temp = addBias(xValidate, mValidate, nValidate); free(xValidate); xValidate = temp; }
+	void addBiasPredict() { float* temp = addBias(xPredict, mPredict, nPredict); free(xPredict); xPredict = temp; }
 private:
 	float* vector2dToMat(vector<vector<float>> data);
 	void normalise(float* data, int a, int b);
@@ -49,8 +52,7 @@ private:
 
 	//float* randInitialiseWeights(int in, int out);
 	// GPU Linear Algebra Functions
-	float* onesGPU(int size);
-	void scaladdGPU(float* a, float b, int aSize);
+	float* addBias(float* data, int a, int b);
 	float* sigmoid(float* data);
 	float* sigmoidGradient(float* data);
 
@@ -60,9 +62,6 @@ private:
 	int iters;
 	int layerNum;
 	int totalThetaSize;
-
-	float* tempGPU;
-	float* temp;
 
 	float* x;
 	float* xValidate;
@@ -101,7 +100,7 @@ private:
 	size_t mValidate;
 	size_t mPredict;
 
-	size_t n;
+	size_t n; // Does not include the bias term
 	size_t nValidate;
 	size_t nPredict;
 

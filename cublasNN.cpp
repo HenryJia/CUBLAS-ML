@@ -274,8 +274,8 @@ void cublasNN::setLayers(int* l, int lNum)
 		totalThetaSize += thetaSize[i];
 		if(i < (layerNum - 2))
 			thetaPos[i + 1] = totalThetaSize;
-		cout << thetaSize[i] << endl;
-		cout << thetaPos[i] << endl << endl;
+		/*cout << thetaSize[i] << endl;
+		cout << thetaPos[i] << endl << endl;*/
 	}
 	if(thetaBaseGPUOld)
 		cudaFree(thetaBaseGPU);
@@ -300,7 +300,7 @@ void cublasNN::setLayers(int* l, int lNum)
 		cublasSscal(handle, thetaSize[i], &epsilon2, theta, 1);
 		scaVecAdd(theta, negEpsilon, theta, thetaSize[i]);
 		absVec(theta, theta, thetaSize[i]);
-		/*temp = (float *)malloc(thetaSize[i] * sizeof(float)); Debug Code
+		/*float* temp = (float *)malloc(thetaSize[i] * sizeof(float)); Debug Code
 		cudaMemcpy(temp, theta, thetaSize[i] * sizeof(float), cudaMemcpyDeviceToHost);
 		int t = 5;
 		if(i == 2)
@@ -315,32 +315,22 @@ void cublasNN::setLayers(int* l, int lNum)
 		free(temp); */
 	}
 }
-/*Mat cublasNN::randInitialiseWeights(int in, int out)
+
+float* cublasNN::addBias(float* data, int a, int b)
 {
-	float epsilon = sqrt(6) / sqrt(1 + in + out);
-
-	Mat weights(in + 1, out, CV_64F);
-	cv::theRNG().state = getTickCount();
-	cv::randu(weights, 0.0, 1.0);
-
-	weights = abs(weights * 2 * epsilon - epsilon);
-
-	return weights;
-}*/
-
-/*float* cublasNN::onesGPU(int size)
-{
-	float *o;
-	const float one = 1.0f;
-	const int* one_bits = reinterpret_cast<const int*>(&one);
-	cudaMalloc((void **)&o, size * sizeof(float));
-	cuMemsetD32(CUdeviceptr(o), *one_bits, size);
-	return o;
+	float* result;
+	result = (float*)malloc(a * (b + 1) * sizeof(*result));
+	for(int i = 0; i < a; i++)
+		for(int j = 0; j < b; j++)
+			result[IDX2C(i, j + 1, a)] = data[IDX2C(i, j, a)];
+	/*for(int i = 0; i < a; i++)
+		result[IDX2C(i, 0, a)] = 1.0f;
+		for(int i = 0; i < 5; i++)
+		{
+			for(int j = 0; j < 5; j++)
+				cout << result[IDX2C(i, j, a)] << '\t';
+			cout << endl;
+		}
+	cout << endl;*/
+	return result;
 }
-
-void cublasNN::scaladdGPU(float* a, float b, int aSize)
-{
-	float *vec = onesGPU(aSize);
-	cublasSaxpy(handle, aSize, &b, vec, 1, a, 1);
-	cudaFree(vec);
-}*/
