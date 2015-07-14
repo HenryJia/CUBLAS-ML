@@ -16,6 +16,9 @@ cublasNN::cublasNN()
 	xValidateGPUOld = false;
 	xPredictGPUOld = false;
 	thetaBaseGPUOld = false;
+	iters = 100;
+	alpha = 1;
+	lambda = 0;
 
 	cublasCreate(&handle);
 	curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
