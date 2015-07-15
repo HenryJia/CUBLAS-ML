@@ -303,19 +303,19 @@ void cublasNN::setLayers(int* l, int lNum)
 		cublasSscal(handle, thetaSize[i], &epsilon2, theta, 1);
 		scaVecAdd(theta, negEpsilon, theta, thetaSize[i]);
 		absVec(theta, theta, thetaSize[i]);
-		/*float* temp = (float *)malloc(thetaSize[i] * sizeof(float)); Debug Code
+		/*float* temp = (float *)malloc(thetaSize[i] * sizeof(float)); //Debug Code
 		cudaMemcpy(temp, theta, thetaSize[i] * sizeof(float), cudaMemcpyDeviceToHost);
-		int t = 5;
-		if(i == 2)
-			t = 1;
-		for(int i = 0; i < 5; i++)
+		for(int j = (in - 5); j < in; j++)
 		{
-			for(int j = 0; j < t; j++)
-				cout << temp[IDX2C(i, j, in)] << '\t';
+			if(i != 2)
+				for(int k = (out - 5); k < out; k++)
+					cout << temp[IDX2C(j, k, in)] << '\t';
+			else
+				cout << temp[IDX2C(j, 0, in)] << '\t';
 			cout << endl;
 		}
 		cout << endl;
-		free(temp); */
+		free(temp);*/
 	}
 }
 
