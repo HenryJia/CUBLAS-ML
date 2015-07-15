@@ -40,11 +40,12 @@ int main(int argc, char **argv)
 	nn.setClassify(false);
 	int layers[4] = {10, 40, 160, 1}; //The bias unit is auto added by the class.
 	nn.setLayers(layers, 4); //This will random initialise the weights
-	nn.addBiasX();
-	nn.addBiasValidate();
-	nn.addBiasPredict();
-	/*float concurrentTime = nn.trainConcurrent();
-	cout << "Concurrent Training " << concurrentTime << " s" << endl;
+	nn.addBiasData();
+	nn.addBiasDataValidate();
+	nn.addBiasDataPredict();
+	nn.copyDataGPU();
+	/*float concurrentTime = nn.trainGPU();
+	cout << "GPU Training " << concurrentTime << " s" << endl;
 	nn.validate();
 	cout << "Write CSV" << endl;
 	cout << nn.predict("result1.csv") << " s" << endl;

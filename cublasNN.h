@@ -36,12 +36,15 @@ public:
 	void normaliseData() { normalise(x, m, n); }
 	void normaliseValidateData() { normalise(xValidate, mValidate, nValidate); }
 	void normalisePredictData() { normalise(xPredict, mValidate, nValidate); }
-	void addBiasX() { float* temp = addBias(x, m, n); free(x); x = temp; }
-	void addBiasValidate() { float* temp = addBias(xValidate, mValidate, nValidate); free(xValidate); xValidate = temp; }
-	void addBiasPredict() { float* temp = addBias(xPredict, mPredict, nPredict); free(xPredict); xPredict = temp; }
+	void addBiasData() { float* temp = addBias(x, m, n); free(x); x = temp; }
+	void addBiasDataValidate() { float* temp = addBias(xValidate, mValidate, nValidate); free(xValidate); xValidate = temp; }
+	void addBiasDataPredict() { float* temp = addBias(xPredict, mPredict, nPredict); free(xPredict); xPredict = temp; }
+	void copyDataGPU() { copyGPU(x, xGPU, m, n); }
+
 private:
 	float* vector2dToMat(vector<vector<float>> data);
 	void normalise(float* data, int a, int b);
+	void copyGPU(float* data, float* dataGPU, int a, int b);
 	float writeCSV(string fileName, float* data);
 
 	// CPU Linear Algebra Functions

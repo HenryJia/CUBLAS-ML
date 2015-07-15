@@ -14,8 +14,8 @@
  * Declarations
  */
 
-void scaVecAdd(const float* A, const float alpha, float* B, int M);
-void absVec(const float* A, float* B, int M);
+void scaVecAddGPU(const float* A, const float alpha, float* B, int M);
+void absVecGPU(const float* A, float* B, int M);
 
 __global__ void kernelScaVecAdd(const float* A, const float alpha, float* B, int M);
 

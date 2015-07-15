@@ -18,12 +18,12 @@ __global__ void kernelAbsVec(const float* A, float* B, int M)
 		B[i] = abs(A[i]);
 }
 
-void scaVecAdd(const float* A, const float alpha, float* B, int M)
+void scaVecAddGPU(const float* A, const float alpha, float* B, int M)
 {
 	kernelScaVecAdd<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, alpha, B, M);
 }
 
-void absVec(const float* A, float* B, int M)
+void absVecGPU(const float* A, float* B, int M)
 {
 	kernelAbsVec<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, B, M);
 }

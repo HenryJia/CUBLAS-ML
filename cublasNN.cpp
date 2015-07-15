@@ -50,6 +50,7 @@ cublasNN::~cublasNN()
 	* thetaPos
 	* thetaSize
 	**/
+	cudaFree(xGPU);
 	cudaFree(thetaBaseGPU);
 	cublasDestroy(handle);
 }
@@ -90,16 +91,21 @@ vector<vector<float>> cublasNN::readCSV(string fileName, bool header, float &tim
 
 float* cublasNN::vector2dToMat(vector<vector<float>> data)
 {
-	float* mat;
+	float* result;
 	int a = data.size();
 	int b = data[0].size();
 
-	mat = (float*)malloc(a * b * sizeof(*mat));
+	result = (float*)malloc(a * b * sizeof(*mat));
+	if(!result)
+	{
+		cout << "Malloc Failed" << endl;
+		return;
+	}
 	for(int i = 0; i < a; i++)
 		for(int j = 0; j < b; j++)
-			mat[IDX2C(i, j, a)] = data[i][j];
+			result[IDX2C(i, j, a)] = data[i][j];
 
-	return mat;
+	return result;
 }
 
 void cublasNN::setData(vector<vector<float>> xVec, vector<vector<float>> yVec)
@@ -301,8 +307,8 @@ void cublasNN::setLayers(int* l, int lNum)
 		float negEpsilon = -epsilon;
 		float* theta = thetaBaseGPU + thetaPos[i];
 		cublasSscal(handle, thetaSize[i], &epsilon2, theta, 1);
-		scaVecAdd(theta, negEpsilon, theta, thetaSize[i]);
-		absVec(theta, theta, thetaSize[i]);
+		scaVecAddGPU(theta, negEpsilon, theta, thetaSize[i]);
+		absVecGPU(theta, theta, thetaSize[i]);
 		/*float* temp = (float *)malloc(thetaSize[i] * sizeof(float)); //Debug Code
 		cudaMemcpy(temp, theta, thetaSize[i] * sizeof(float), cudaMemcpyDeviceToHost);
 		for(int j = (in - 5); j < in; j++)
@@ -323,9 +329,15 @@ float* cublasNN::addBias(float* data, int a, int b)
 {
 	float* result;
 	result = (float*)malloc(a * (b + 1) * sizeof(*result));
+	if(!result)
+	{
+		cout << "Malloc Failed" << endl;
+		return nullptr;
+	}
 	for(int i = 0; i < a; i++)
 		for(int j = 0; j < b; j++)
 			result[IDX2C(i, j + 1, a)] = data[IDX2C(i, j, a)];
+
 	/*for(int i = 0; i < a; i++)
 		result[IDX2C(i, 0, a)] = 1.0f;
 		for(int i = 0; i < 5; i++)
@@ -336,4 +348,20 @@ float* cublasNN::addBias(float* data, int a, int b)
 		}
 	cout << endl;*/
 	return result;
+}
+
+void cublasNN::copyGPU(float* data, float* dataGPU, int a, int b)
+{
+	cudaStat = cudaMalloc((void**)&dataGPU, a * b * sizeof(*data));
+	if (cudaStat != cudaSuccess)
+	{
+		cout << "cudaMalloc Failed" << endl;
+		return;
+	}
+	cudaStat = cudaMemcpy(dataGPU, data, a * b * sizeof(*data), cudaMemcpyHostToDevice);
+	if (cudaStat != cudaSuccess)
+	{
+		cout << "cudaMalloc Failed" << endl;
+		return;
+	}
 }
