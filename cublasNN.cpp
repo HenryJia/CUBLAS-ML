@@ -51,6 +51,7 @@ cublasNN::~cublasNN()
 	* thetaSize
 	**/
 	cudaFree(xGPU);
+	cudaFree(yGPU);
 	cudaFree(thetaBaseGPU);
 	cublasDestroy(handle);
 }
