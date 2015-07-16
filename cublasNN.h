@@ -39,7 +39,7 @@ public:
 	void addBiasData() { float* temp = addBias(x, m, n); free(x); x = temp; }
 	void addBiasDataValidate() { float* temp = addBias(xValidate, mValidate, nValidate); free(xValidate); xValidate = temp; }
 	void addBiasDataPredict() { float* temp = addBias(xPredict, mPredict, nPredict); free(xPredict); xPredict = temp; }
-	void copyDataGPU() { copyGPU(x, xGPU, m, n); }
+	void copyDataGPU() { copyGPU(x, xGPU, m, n); copyGPU(y, yGPU, m, 1); }
 	double trainFuncApprox();
 
 private:
