@@ -95,11 +95,11 @@ float* cublasNN::vector2dToMat(vector<vector<float>> data)
 	int a = data.size();
 	int b = data[0].size();
 
-	result = (float*)malloc(a * b * sizeof(*mat));
+	result = (float*)malloc(a * b * sizeof(*result));
 	if(!result)
 	{
 		cout << "Malloc Failed" << endl;
-		return;
+		return nullptr;
 	}
 	for(int i = 0; i < a; i++)
 		for(int j = 0; j < b; j++)
@@ -259,11 +259,15 @@ void cublasNN::setLayers(int* l, int lNum)
 {
 	layerNum = lNum;
 	layers = (int*)malloc(layerNum * sizeof(*layers));
+
 	if(!layers)
 	{
 		cout << "Malloc Failed" << endl;
 		return;
 	}
+
+	for(int i = 0; i < layerNum; i++)
+		layers[i] = l[i];
 
 	// To Randomly Initialise The Weights
 	totalThetaSize = 0;
@@ -275,17 +279,21 @@ void cublasNN::setLayers(int* l, int lNum)
 		return;
 	}
 	thetaPos[0] = 0;
-	for(int i = 0; i < (layerNum - 1); i++)
+	for(int i = 0; i < (layerNum - 2); i++)
 	{
-		int in = l[i] + 1;
-		int out = l[i + 1];
-		thetaSize[i] = in * out;
+		thetaSize[i] = (l[i] + 1) * l[i + 1];
 		totalThetaSize += thetaSize[i];
-		if(i < (layerNum - 2))
-			thetaPos[i + 1] = totalThetaSize;
-		/*cout << thetaSize[i] << endl;
-		cout << thetaPos[i] << endl << endl;*/
+		thetaPos[i + 1] = totalThetaSize;
 	}
+	thetaSize[(layerNum - 2)] = (l[(layerNum - 2)] + 1) * l[(layerNum - 1)];
+	totalThetaSize += thetaSize[(layerNum - 2)];
+
+	/*for(int i = 0; i < (layerNum - 1); i++)
+	{
+		cout << thetaSize[i] << endl;
+		cout << thetaPos[i] << endl << endl;
+	}*/
+
 	if(thetaBaseGPUOld)
 		cudaFree(thetaBaseGPU);
 
@@ -364,4 +372,133 @@ void cublasNN::copyGPU(float* data, float* dataGPU, int a, int b)
 		cout << "cudaMalloc Failed" << endl;
 		return;
 	}
+}
+
+void cublasNN::allocVarGPU()
+{
+	totalzSize = 0;
+	zPos = (int*)malloc((layerNum - 1) * sizeof(*zPos));
+	zSize = (int*)malloc((layerNum - 1) * sizeof(*zSize));
+	totaldeltaSize = 0;
+	deltaPos = (int*)malloc((layerNum - 1) * sizeof(*deltaPos));
+	deltaSize = (int*)malloc((layerNum - 1) * sizeof(*deltaSize));
+
+	if(!zPos || !deltaPos || !zSize || !deltaSize)
+	{
+		cout << "Malloc Failed" << endl;
+		return;
+	}
+
+	zPos[0] = 0;
+	deltaPos[0] = 0;
+	for(int i = 0; i < (layerNum - 2); i++)
+	{
+		zSize[i] = layers[i + 1] * m;
+		deltaSize[i] = zSize[i];
+		totalzSize += zSize[i];
+		zPos[i + 1] = totalzSize;
+		deltaPos[i + 1] = zPos[i + 1];
+	}
+	zSize[(layerNum - 2)] = layers[(layerNum - 1)] * m;
+	deltaSize[(layerNum - 2)] = zSize[(layerNum - 2)];
+	totalzSize += zSize[(layerNum - 2)];
+	totaldeltaSize = totalzSize;
+	/*for(int i = 0; i < (layerNum - 1); i++)
+	{
+		cout << zSize[i] << endl;
+		cout << zPos[i] << endl << endl;
+	}
+	cout << totalzSize << endl;*/
+
+	totalaSize = 0;
+	aPos = (int*)malloc((layerNum - 1) * sizeof(*aPos));
+	aSize = (int*)malloc((layerNum - 1) * sizeof(*aSize));
+
+	if(!aPos || !aSize)
+	{
+		cout << "Malloc Failed" << endl;
+		return;
+	}
+
+	aPos[0] = 0;
+	for(int i = 0; i < (layerNum - 2); i++)
+	{
+		aSize[i] = (layers[i + 1] + 1) * m;
+		totalaSize += aSize[i];
+		aPos[i + 1] = totalaSize;
+	}
+	aSize[(layerNum - 2)] = layers[(layerNum - 1)] * m;
+	totalaSize += aSize[(layerNum - 2)];
+	/*for(int i = 0; i < (layerNum - 1); i++)
+	{
+		cout << aSize[i] << endl;
+		cout << aPos[i] << endl << endl;
+	}
+	cout << totalaSize << endl;*/
+
+	totalDeltaSize = 0;
+	totalthetaGradSize = 0;
+	DeltaPos = (int*)malloc((layerNum - 1) * sizeof(*DeltaPos));
+	DeltaSize = (int*)malloc((layerNum - 1) * sizeof(*DeltaSize));
+	thetaGradPos = (int*)malloc((layerNum - 1) * sizeof(*thetaGradPos));
+	thetaGradSize = (int*)malloc((layerNum - 1) * sizeof(*thetaGradSize));
+
+	if(!DeltaPos || !thetaGradPos || !DeltaSize || !thetaGradSize)
+	{
+		cout << "Malloc Failed" << endl;
+		return;
+	}
+
+	DeltaPos[0] = 0;
+	thetaGradPos[0] = 0;
+	for(int i = 0; i < (layerNum - 1); i++)
+	{
+		DeltaSize[i] =  thetaSize[i];
+		DeltaPos[i] =  thetaPos[i];
+		thetaGradSize[i] =  thetaSize[i];
+		thetaGradPos[i] =  thetaPos[i];
+	}
+	totalthetaGradSize = totalThetaSize;
+	totalDeltaSize = totalThetaSize;
+	/*for(int i = 0; i < (layerNum - 1); i++)
+	{
+		cout << DeltaSize[i] << endl;
+		cout << DeltaPos[i] << endl << endl;
+	}
+	cout << totalDeltaSize << endl;*/
+
+	cudaMalloc((void**)&zBaseGPU, totalzSize * sizeof(float));
+	cudaMalloc((void**)&aBaseGPU, totalaSize * sizeof(float));
+	cudaMalloc((void**)&deltaBaseGPU, totaldeltaSize * sizeof(float));
+	cudaMalloc((void**)&DeltaBaseGPU, totalDeltaSize * sizeof(float));
+	cudaMalloc((void**)&thetaGradBaseGPU, totalthetaGradSize * sizeof(float));
+}
+
+double cublasNN::trainFuncApprox()
+{
+	auto start = chrono::steady_clock::now();
+	allocVarGPU();
+
+	cudaFree(zBaseGPU);
+	free(zPos);
+	free(zSize);
+
+	cudaFree(aBaseGPU);
+	free(aPos);
+	free(aSize);
+
+	cudaFree(deltaBaseGPU);
+	free(deltaPos);
+	free(deltaSize);
+
+	cudaFree(DeltaBaseGPU);
+	free(DeltaPos);
+	free(DeltaSize);
+
+	cudaFree(thetaGradBaseGPU);
+	free(thetaGradPos);
+	free(thetaGradSize);
+	auto end = chrono::steady_clock::now();
+	auto elapsed = end - start;
+	return chrono::duration <double> (elapsed).count();
 }

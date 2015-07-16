@@ -40,6 +40,7 @@ public:
 	void addBiasDataValidate() { float* temp = addBias(xValidate, mValidate, nValidate); free(xValidate); xValidate = temp; }
 	void addBiasDataPredict() { float* temp = addBias(xPredict, mPredict, nPredict); free(xPredict); xPredict = temp; }
 	void copyDataGPU() { copyGPU(x, xGPU, m, n); }
+	double trainFuncApprox();
 
 private:
 	float* vector2dToMat(vector<vector<float>> data);
@@ -56,6 +57,7 @@ private:
 	//float* randInitialiseWeights(int in, int out);
 	// GPU Linear Algebra Functions
 	float* addBias(float* data, int a, int b);
+	void allocVarGPU();
 	float* sigmoid(float* data);
 	float* sigmoidGradient(float* data);
 
@@ -64,7 +66,6 @@ private:
 	float JValidate;
 	int iters;
 	int layerNum;
-	int totalThetaSize;
 
 	float* x;
 	float* xValidate;
@@ -80,6 +81,8 @@ private:
 	float* thetaBaseGPU;
 	int* thetaPos;
 	int* thetaSize;
+	int totalThetaSize;
+
 
 	bool xOld;
 	bool xValidateOld;
@@ -107,12 +110,32 @@ private:
 	size_t nValidate;
 	size_t nPredict;
 
-	vector<float*> z;
-	vector<float*> a;
+// Will need to free the pointers below
 
-	vector<float*> delta;
-	vector<float*> Delta;
-	vector<float*> thetaGrad;
+	float* zBaseGPU;
+	int* zPos;
+	int* zSize;
+	int totalzSize;
+
+	float* aBaseGPU;
+	int* aPos;
+	int* aSize;
+	int totalaSize;
+
+	float* deltaBaseGPU;
+	int* deltaPos;
+	int* deltaSize;
+	int totaldeltaSize;
+
+	float* DeltaBaseGPU;
+	int* DeltaPos;
+	int* DeltaSize;
+	int totalDeltaSize;
+
+	float* thetaGradBaseGPU;
+	int* thetaGradPos;
+	int* thetaGradSize;
+	int totalthetaGradSize;
 
 	vector<float*> aFinal;
 	vector<float*> deltaFinal;

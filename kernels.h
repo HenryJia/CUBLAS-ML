@@ -10,10 +10,6 @@
 
 #define NUM_BLOCKS(M) (M + BLOCK_THREADS - 1) / BLOCK_THREADS
 
-/*
- * Declarations
- */
-
 void scaVecAddGPU(const float* A, const float alpha, float* B, int M);
 void absVecGPU(const float* A, float* B, int M);
 

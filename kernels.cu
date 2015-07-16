@@ -1,9 +1,5 @@
 #include "kernels.h"
 
-/*
- * Definitions
- */
-
 __global__ void kernelScaVecAdd(const float* A, const float alpha, float* B, int M)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
