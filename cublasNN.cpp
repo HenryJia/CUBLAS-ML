@@ -516,7 +516,8 @@ double cublasNN::trainFuncApprox()
 	{
 		matMatMultiplyGPU(xGPU, (thetaBaseGPU + thetaPos[0]), (zBaseGPU + zPos[0]), m, layers[1], (layers[0] + 1));
 		sigmoidVecGPU((zBaseGPU + zPos[0]), (aBaseGPU + aPos[0] + m), zSize[0]);
-		for(int j = 1; j < layerNum - 2; j++) {
+		for(int j = 1; j < layerNum - 2; j++)
+		{
 			addBiasMatGPU((aBaseGPU + aPos[j - 1]), m);
 			matMatMultiplyGPU((aBaseGPU + aPos[j - 1]), (thetaBaseGPU + thetaPos[j]), (zBaseGPU + zPos[j]),
 			m, layers[j + 1], (layers[j] + 1));
