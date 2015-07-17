@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <thread>
+#include <iostream>
 
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
@@ -39,13 +40,13 @@ public:
 	void addBiasData() { float* temp = addBias(x, m, n); free(x); x = temp; }
 	void addBiasDataValidate() { float* temp = addBias(xValidate, mValidate, nValidate); free(xValidate); xValidate = temp; }
 	void addBiasDataPredict() { float* temp = addBias(xPredict, mPredict, nPredict); free(xPredict); xPredict = temp; }
-	void copyDataGPU() { copyGPU(x, xGPU, m, n); copyGPU(y, yGPU, m, 1); }
+	void copyDataGPU() { xGPU = copyGPU(x, m, (n + 1));	yGPU = copyGPU(y, m, 1); }
 	double trainFuncApprox();
 
 private:
 	float* vector2dToMat(vector<vector<float>> data);
 	void normalise(float* data, int a, int b);
-	void copyGPU(float* data, float* dataGPU, int a, int b);
+	float* copyGPU(float* data, int a, int b);
 	float writeCSV(string fileName, float* data);
 
 	// CPU Linear Algebra Functions

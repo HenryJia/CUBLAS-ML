@@ -347,32 +347,52 @@ float* cublasNN::addBias(float* data, int a, int b)
 		for(int j = 0; j < b; j++)
 			result[IDX2C(i, j + 1, a)] = data[IDX2C(i, j, a)];
 
-	/*for(int i = 0; i < a; i++)
+	for(int i = 0; i < a; i++)
 		result[IDX2C(i, 0, a)] = 1.0f;
-		for(int i = 0; i < 5; i++)
-		{
-			for(int j = 0; j < 5; j++)
-				cout << result[IDX2C(i, j, a)] << '\t';
-			cout << endl;
-		}
+	/*for(int i = 0; i < 5; i++)
+	{
+		for(int j = 0; j < 5; j++)
+			cout << result[IDX2C(i, j, a)] << '\t';
+		cout << endl;
+	}
+	cout << endl;
+	for(int j = 0; j < 5; j++)
+	{
+		for(int k = 0; k < 5; k++)
+			cout << data[IDX2C(j, k, a)] << '\t';
+		cout << endl;
+	}
 	cout << endl;*/
 	return result;
 }
 
-void cublasNN::copyGPU(float* data, float* dataGPU, int a, int b)
+float* cublasNN::copyGPU(float* data, int a, int b)
 {
+	float* dataGPU;
 	cudaStat = cudaMalloc((void**)&dataGPU, a * b * sizeof(*data));
 	if (cudaStat != cudaSuccess)
 	{
 		cout << "cudaMalloc Failed" << endl;
-		return;
+		return nullptr;
 	}
+
 	cudaStat = cudaMemcpy(dataGPU, data, a * b * sizeof(*data), cudaMemcpyHostToDevice);
 	if (cudaStat != cudaSuccess)
 	{
-		cout << "cudaMalloc Failed" << endl;
-		return;
+		cout << "cudaMemcpy Failed" << endl;
+		return nullptr;
 	}
+	/*float* temp = (float *)malloc(a * b * sizeof(float)); //Debug Code
+	cudaMemcpy(temp, dataGPU, a * b * sizeof(float), cudaMemcpyDeviceToHost);
+	for(int j = 0; j < 5; j++)
+	{
+		for(int k = 0; k < 5; k++)
+			cout << temp[IDX2C(j, k, a)] << '\t';
+		cout << endl;
+	}
+	cout << endl;
+	free(temp);*/
+	return dataGPU;
 }
 
 void cublasNN::allocVarGPU()
