@@ -22,6 +22,7 @@ cublasNN::cublasNN()
 
 	cublasCreate(&handle);
 	curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
+	curandSetPseudoRandomGeneratorSeed(gen, (unsigned long long) clock());
 }
 
 cublasNN::~cublasNN()
@@ -495,11 +496,47 @@ void cublasNN::allocVarGPU()
 	cudaMalloc((void**)&thetaGradBaseGPU, totalthetaGradSize * sizeof(float));
 }
 
+// C(m,n) = A(m,k) * B(k,n)
+void cublasNN::matMatMultiplyGPU(const float *A, const float *B, float *C, const int m, const int k, const int n)
+{
+	int lda=m,ldb=k,ldc=m;
+	const float alpha = 1, beta = 0;
+
+	// Do the actual multiplication
+	cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, m, n, k, &alpha, A, lda, B, ldb, &beta, C, ldc);
+}
+
 double cublasNN::trainFuncApprox()
 {
 	auto start = chrono::steady_clock::now();
 	allocVarGPU();
+	float J;
 
+	for(int i = 0; i < iters; i++)
+	{
+		matMatMultiplyGPU(xGPU, (thetaBaseGPU + thetaPos[0]), (zBaseGPU + zPos[0]), m, layers[1], (layers[0] + 1));
+		sigmoidVecGPU((zBaseGPU + zPos[0]), (aBaseGPU + aPos[0] + m), zSize[0]);
+		for(int j = 1; j < layerNum - 2; j++) {
+			addBiasMatGPU((aBaseGPU + aPos[j - 1]), m);
+			matMatMultiplyGPU((aBaseGPU + aPos[j - 1]), (thetaBaseGPU + thetaPos[j]), (zBaseGPU + zPos[j]),
+			m, layers[j + 1], (layers[j] + 1));
+			sigmoidVecGPU((zBaseGPU + zPos[j]), (aBaseGPU + aPos[j] + m), zSize[j]);
+		}
+		addBiasMatGPU((aBaseGPU + aPos[layerNum - 3]), m);
+		matMatMultiplyGPU((aBaseGPU + aPos[layerNum - 3]), (thetaBaseGPU + thetaPos[layerNum - 2]),
+		(zBaseGPU + zPos[layerNum - 2]), m, layers[layerNum - 1], (layers[layerNum - 2] + 1));
+		//sigmoidVecGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
+
+		//delta[base + layerNum - 2] = a[base + layerNum - 2] - datay;
+		vecVecSubtractGPU((zBaseGPU + zPos[layerNum - 2]), yGPU, (deltaBaseGPU + deltaPos[layerNum - 2]), zSize[layerNum - 2]);
+	
+		cublasSdot(handle, deltaSize[layerNum - 2], (deltaBaseGPU + deltaPos[layerNum - 2]), 1,
+		(deltaBaseGPU + deltaPos[layerNum - 2]), 1, &J);
+		J /= (2 * m);
+
+		cout << "Iteration: " << i << "\t" << "Cost: " << J << endl;
+	
+	}
 	cudaFree(zBaseGPU);
 	free(zPos);
 	free(zSize);

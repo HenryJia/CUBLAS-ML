@@ -11,8 +11,13 @@
 #define NUM_BLOCKS(M) (M + BLOCK_THREADS - 1) / BLOCK_THREADS
 
 void scaVecAddGPU(const float* A, const float alpha, float* B, int M);
+void vecVecSubtractGPU(const float* A, float* B, float* C, int M);
 void absVecGPU(const float* A, float* B, int M);
+void sigmoidVecGPU(const float* A, float* B, int M);
+void addBiasMatGPU(float* A, int M);
 
 __global__ void kernelScaVecAdd(const float* A, const float alpha, float* B, int M);
-
+__global__ void kernelVecVecSubtract(const float* A, float* B, float* C, int M);
 __global__ void kernelAbsVec(const float* A, float* B, int M);
+__global__ void kernelSigmoidVec(const float* A, float* B, int M);
+__global__ void kernelAddBiasMat(float* A, int M);

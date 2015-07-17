@@ -59,8 +59,7 @@ private:
 	// GPU Linear Algebra Functions
 	float* addBias(float* data, int a, int b);
 	void allocVarGPU();
-	float* sigmoid(float* data);
-	float* sigmoidGradient(float* data);
+	void matMatMultiplyGPU(const float *A, const float *B, float *C, const int m, const int k, const int n);
 
 	float alpha;
 	float lambda;
