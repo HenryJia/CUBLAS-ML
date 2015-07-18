@@ -59,8 +59,9 @@ private:
 	// GPU Linear Algebra Functions
 	float* addBias(float* data, int a, int b);
 	void allocVarGPU();
-	void matMatMultiplyGPU(const float *A, const float *B, float *C, const int m, const int n, const int k,
+	void matMatMultiplyGPU(const float *A, const float *B, float *C, const int a, const int b, const int c,
 							cublasOperation_t transa, cublasOperation_t transb, int lda, int ldb, int ldc);
+	void matTranspose(const float* A, float* B, const int a, const int b);
 
 	float alpha;
 	float lambda;
