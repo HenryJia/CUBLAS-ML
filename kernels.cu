@@ -14,6 +14,13 @@ __global__ void kernelVecVecSubtract(const float* A, float* B, float* C, int M)
 		C[i] = B[i] - A[i];
 }
 
+__global__ void kernelVecVecElementMultiply(const float* A, float* B, float* C, int M)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i < M)
+		C[i] = B[i] * A[i];
+}
+
 __global__ void kernelAbsVec(const float* A, float* B, int M)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -43,6 +50,11 @@ void scaVecAddGPU(const float* A, const float alpha, float* B, int M)
 void vecVecSubtractGPU(const float* A, float* B, float* C, int M)
 {
 	kernelVecVecSubtract<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, B, C, M);
+}
+
+void vecVecElementMultiplyGPU(const float* A, float* B, float* C, int M)
+{
+	kernelVecVecElementMultiply<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, B, C, M);
 }
 
 void absVecGPU(const float* A, float* B, int M)

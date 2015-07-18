@@ -40,7 +40,7 @@ public:
 	void addBiasData() { float* temp = addBias(x, m, n); free(x); x = temp; }
 	void addBiasDataValidate() { float* temp = addBias(xValidate, mValidate, nValidate); free(xValidate); xValidate = temp; }
 	void addBiasDataPredict() { float* temp = addBias(xPredict, mPredict, nPredict); free(xPredict); xPredict = temp; }
-	void copyDataGPU() { xGPU = copyGPU(x, m, (n + 1));	yGPU = copyGPU(y, m, 1); }
+	void copyDataGPU();
 	double trainFuncApprox();
 
 private:
@@ -59,7 +59,8 @@ private:
 	// GPU Linear Algebra Functions
 	float* addBias(float* data, int a, int b);
 	void allocVarGPU();
-	void matMatMultiplyGPU(const float *A, const float *B, float *C, const int m, const int k, const int n);
+	void matMatMultiplyGPU(const float *A, const float *B, float *C, const int m, const int n, const int k,
+							cublasOperation_t transa, cublasOperation_t transb, int lda, int ldb, int ldc);
 
 	float alpha;
 	float lambda;
