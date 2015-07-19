@@ -94,9 +94,9 @@ private:
 	bool xPredictGPUOld;
 	bool thetaBaseGPUOld;
 	int* layers;
-	vector<float> J;
-	vector<float> JBatch;
-	vector<thread> t;
+	//vector<float> J;
+	//vector<float> JBatch;
+	//vector<thread> t;
 	bool classification;
 
 	cudaError_t cudaStat;    
@@ -104,13 +104,13 @@ private:
 	cublasHandle_t handle;
 	curandGenerator_t gen;
 
-	size_t m;
-	size_t mValidate;
-	size_t mPredict;
+	int m;
+	int mValidate;
+	int mPredict;
 
-	size_t n; // Does not include the bias term
-	size_t nValidate;
-	size_t nPredict;
+	int n; // Does not include the bias term
+	int nValidate;
+	int nPredict;
 
 // Will need to free the pointers below
 
@@ -134,15 +134,15 @@ private:
 	int* DeltaSize;
 	int totalDeltaSize;
 
-	float* thetaGradBaseGPU;
-	int* thetaGradPos;
-	int* thetaGradSize;
-	int totalthetaGradSize;
+	//float* thetaGradBaseGPU;
+	//int* thetaGradPos;
+	//int* thetaGradSize;
+	//int totalthetaGradSize;
 
-	vector<float*> aFinal;
+	/*vector<float*> aFinal;
 	vector<float*> deltaFinal;
 	vector<float*> DeltaFinal;
-	vector<float*> thetaGradFinal;
+	vector<float*> thetaGradFinal;*/
 
 	// Functions for concurrency
 	void grad(size_t threadNum, int rangeLower, int rangeUpper);
