@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 	nn.normaliseValidateData();
 	nn.normalisePredictData();
 	nn.setAlpha(0.00025);
-	nn.setIters(100);
+	nn.setIters(1000);
 	nn.setClassify(false);
 	int layers[4] = {10, 40, 160, 1}; //The bias unit is auto added by the class.
 	nn.setLayers(layers, 4); //This will random initialise the weights

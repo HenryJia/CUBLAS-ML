@@ -114,40 +114,14 @@ void cublasNN::setData(vector<vector<float>> xVec, vector<vector<float>> yVec)
 {
 	m = xVec.size();
 	n = xVec[0].size();
-	/*for(int i = 0; i < 10; i++)
-	{
-		for(int j = 0; j < n; j++)
-			cout << xVec[i][j] << '\t';
-		cout << endl;
-	}*/
 	if(xOld)
 	{
 		free(x);
 		free(y);
 	}
 	x = vector2dToMat(xVec);
-	/*for(int i = 0; i < 10; i++)
-	{
-		for(int j = 0; j < n; j++)
-			cout << x[IDX2C(j, i, n)] << '\t';
-		cout << endl;
-	}*/
 	y = vector2dToMat(yVec);
 	xOld = true;
-	/*For loading into GPU
-	 * if(xGPUOld)
-	{
-		cudaFree(xGPU);
-		cudaFree(yGPU);
-	}
-	cudaStat = cudaMalloc ((void**)&xGPU, m * n * sizeof(*x));
-	if (cudaStat != cudaSuccess)
-	{
-		cout << "device memory allocation failed" << endl;
-		return;
-	}
-	 * Unfinished
-	 **/
 }
 
 void cublasNN::setValidateData(vector<vector<float>> xVec, vector<vector<float>> yVec)
@@ -191,14 +165,6 @@ void cublasNN::normalise(float* data, int a, int b)
 	}
 	free(Mean);
 	free(Stddev);
-
-	/*for(int i = 0; i < 5; i++)
-	{
-		for(int j = 0; j < 5; j++)
-			cout << x[IDX2C(i, j, a)] << '\t';
-		cout << endl;
-	}
-	cout << endl;*/
 }
 
 float* cublasNN::mean(float* data, int a, int b)
@@ -290,12 +256,6 @@ void cublasNN::setLayers(int* l, int lNum)
 	thetaSize[(layerNum - 2)] = (l[(layerNum - 2)] + 1) * l[(layerNum - 1)];
 	totalThetaSize += thetaSize[(layerNum - 2)];
 
-	/*for(int i = 0; i < (layerNum - 1); i++)
-	{
-		cout << thetaSize[i] << endl;
-		cout << thetaPos[i] << endl << endl;
-	}*/
-
 	if(thetaBaseGPUOld)
 		cudaFree(thetaBaseGPU);
 
@@ -319,19 +279,6 @@ void cublasNN::setLayers(int* l, int lNum)
 		cublasSscal(handle, thetaSize[i], &epsilon2, theta, 1);
 		scaVecAddGPU(theta, negEpsilon, theta, thetaSize[i]);
 		absVecGPU(theta, theta, thetaSize[i]);
-		/*float* temp = (float *)malloc(thetaSize[i] * sizeof(float)); //Debug Code
-		cudaMemcpy(temp, theta, thetaSize[i] * sizeof(float), cudaMemcpyDeviceToHost);
-		for(int j = (in - 5); j < in; j++)
-		{
-			if(i != 2)
-				for(int k = (out - 5); k < out; k++)
-					cout << temp[IDX2C(j, k, in)] << '\t';
-			else
-				cout << temp[IDX2C(j, 0, in)] << '\t';
-			cout << endl;
-		}
-		cout << endl;
-		free(temp);*/
 	}
 }
 
@@ -350,21 +297,19 @@ float* cublasNN::addBias(float* data, int a, int b)
 
 	for(int i = 0; i < a; i++)
 		result[IDX2C(i, 0, a)] = 1.0f;
-	/*for(int i = 0; i < 5; i++)
-	{
-		for(int j = 0; j < 5; j++)
-			cout << result[IDX2C(i, j, a)] << '\t';
-		cout << endl;
-	}
-	cout << endl;
-	for(int j = 0; j < 5; j++)
-	{
-		for(int k = 0; k < 5; k++)
-			cout << data[IDX2C(j, k, a)] << '\t';
-		cout << endl;
-	}
-	cout << endl;*/
 	return result;
+}
+
+void cublasNN::copyDataGPU()
+{
+	if(xGPUOld)
+	{
+		cudaFree(xGPU);
+		cudaFree(yGPU);
+	}
+	xGPU = copyGPU(x, m, (n + 1));
+	yGPU = copyGPU(y, m, 1);
+	xGPUOld = true;
 }
 
 float* cublasNN::copyGPU(float* data, int a, int b)
@@ -383,16 +328,6 @@ float* cublasNN::copyGPU(float* data, int a, int b)
 		cout << "cudaMemcpy Failed" << endl;
 		return nullptr;
 	}
-	/*float* temp = (float *)malloc(a * b * sizeof(float)); //Debug Code
-	cudaMemcpy(temp, dataGPU, a * b * sizeof(float), cudaMemcpyDeviceToHost);
-	for(int j = 0; j < 5; j++)
-	{
-		for(int k = 0; k < 5; k++)
-			cout << temp[IDX2C(j, k, a)] << '\t';
-		cout << endl;
-	}
-	cout << endl;
-	free(temp);*/
 	return dataGPU;
 }
 
@@ -425,12 +360,6 @@ void cublasNN::allocVarGPU()
 	deltaSize[(layerNum - 2)] = zSize[(layerNum - 2)];
 	totalzSize += zSize[(layerNum - 2)];
 	totaldeltaSize = totalzSize;
-	/*for(int i = 0; i < (layerNum - 1); i++)
-	{
-		cout << zSize[i] << endl;
-		cout << zPos[i] << endl << endl;
-	}
-	cout << totalzSize << endl;*/
 
 	totalaSize = 0;
 	aPos = (int*)malloc((layerNum - 1) * sizeof(*aPos));
@@ -451,59 +380,45 @@ void cublasNN::allocVarGPU()
 	}
 	aSize[(layerNum - 2)] = layers[(layerNum - 1)] * m;
 	totalaSize += aSize[(layerNum - 2)];
-	/*for(int i = 0; i < (layerNum - 1); i++)
-	{
-		cout << aSize[i] << endl;
-		cout << aPos[i] << endl << endl;
-	}
-	cout << totalaSize << endl;*/
 
 	totalDeltaSize = 0;
-	totalthetaGradSize = 0;
 	DeltaPos = (int*)malloc((layerNum - 1) * sizeof(*DeltaPos));
 	DeltaSize = (int*)malloc((layerNum - 1) * sizeof(*DeltaSize));
-	thetaGradPos = (int*)malloc((layerNum - 1) * sizeof(*thetaGradPos));
-	thetaGradSize = (int*)malloc((layerNum - 1) * sizeof(*thetaGradSize));
 
-	if(!DeltaPos || !thetaGradPos || !DeltaSize || !thetaGradSize)
+	if(!DeltaPos || !DeltaSize)
 	{
 		cout << "Malloc Failed" << endl;
 		return;
 	}
 
 	DeltaPos[0] = 0;
-	thetaGradPos[0] = 0;
 	for(int i = 0; i < (layerNum - 1); i++)
 	{
 		DeltaSize[i] =  thetaSize[i];
 		DeltaPos[i] =  thetaPos[i];
-		thetaGradSize[i] =  thetaSize[i];
-		thetaGradPos[i] =  thetaPos[i];
 	}
-	totalthetaGradSize = totalThetaSize;
 	totalDeltaSize = totalThetaSize;
-	/*for(int i = 0; i < (layerNum - 1); i++)
-	{
-		cout << DeltaSize[i] << endl;
-		cout << DeltaPos[i] << endl << endl;
-	}
-	cout << totalDeltaSize << endl;*/
+
 
 	cudaMalloc((void**)&zBaseGPU, totalzSize * sizeof(float));
 	cudaMalloc((void**)&aBaseGPU, totalaSize * sizeof(float));
 	cudaMalloc((void**)&deltaBaseGPU, totaldeltaSize * sizeof(float));
 	cudaMalloc((void**)&DeltaBaseGPU, totalDeltaSize * sizeof(float));
-	cudaMalloc((void**)&thetaGradBaseGPU, totalthetaGradSize * sizeof(float));
 }
 
-// C(m,n) = A(m,k) * B(k,n)
-void cublasNN::matMatMultiplyGPU(const float *A, const float *B, float *C, const int m, const int k, const int n)
+// Wrapper for cublasSgemm to make life easier C(m,n) = A(m,k) * B(k,n)
+void cublasNN::matMatMultiplyGPU(const float *A, const float *B, float *C, const int a, const int b, const int c,
+									cublasOperation_t transa = CUBLAS_OP_N, cublasOperation_t transb = CUBLAS_OP_N,
+									int lda = -1, int ldb = -1, int ldc = -1)
 {
-	int lda=m,ldb=k,ldc=m;
 	const float alpha = 1, beta = 0;
+	//int lda = m, int ldb = k, int ldc = m
+	(lda < 0 && (lda = a));
+	(ldb < 0 && (ldb = c));
+	(ldc < 0 && (ldc = a));
 
 	// Do the actual multiplication
-	cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, m, n, k, &alpha, A, lda, B, ldb, &beta, C, ldc);
+	cublasSgemm(handle, transa, transb, a, b, c, &alpha, A, lda, B, ldb, &beta, C, ldc);
 }
 
 double cublasNN::trainFuncApprox()
@@ -511,32 +426,59 @@ double cublasNN::trainFuncApprox()
 	auto start = chrono::steady_clock::now();
 	allocVarGPU();
 	float J;
+	float* product;
+	float* sigGrad;
+	const float alpha2 = 1.0f, beta2 = -alpha / m;
 
 	for(int i = 0; i < iters; i++)
 	{
 		matMatMultiplyGPU(xGPU, (thetaBaseGPU + thetaPos[0]), (zBaseGPU + zPos[0]), m, layers[1], (layers[0] + 1));
 		sigmoidVecGPU((zBaseGPU + zPos[0]), (aBaseGPU + aPos[0] + m), zSize[0]);
-		for(int j = 1; j < layerNum - 2; j++)
+		for(int j = 1; j < layerNum - 2; j++) 
 		{
 			addBiasMatGPU((aBaseGPU + aPos[j - 1]), m);
 			matMatMultiplyGPU((aBaseGPU + aPos[j - 1]), (thetaBaseGPU + thetaPos[j]), (zBaseGPU + zPos[j]),
-			m, layers[j + 1], (layers[j] + 1));
+			                  m, layers[j + 1], (layers[j] + 1));
 			sigmoidVecGPU((zBaseGPU + zPos[j]), (aBaseGPU + aPos[j] + m), zSize[j]);
 		}
 		addBiasMatGPU((aBaseGPU + aPos[layerNum - 3]), m);
 		matMatMultiplyGPU((aBaseGPU + aPos[layerNum - 3]), (thetaBaseGPU + thetaPos[layerNum - 2]),
-		(zBaseGPU + zPos[layerNum - 2]), m, layers[layerNum - 1], (layers[layerNum - 2] + 1));
+		                  (zBaseGPU + zPos[layerNum - 2]), m, layers[layerNum - 1], (layers[layerNum - 2] + 1));
 		//sigmoidVecGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
 
-		//delta[base + layerNum - 2] = a[base + layerNum - 2] - datay;
 		vecVecSubtractGPU((zBaseGPU + zPos[layerNum - 2]), yGPU, (deltaBaseGPU + deltaPos[layerNum - 2]), zSize[layerNum - 2]);
-	
+
 		cublasSdot(handle, deltaSize[layerNum - 2], (deltaBaseGPU + deltaPos[layerNum - 2]), 1,
-		(deltaBaseGPU + deltaPos[layerNum - 2]), 1, &J);
+		           (deltaBaseGPU + deltaPos[layerNum - 2]), 1, &J);
 		J /= (2 * m);
 
 		cout << "Iteration: " << i << "\t" << "Cost: " << J << endl;
-	
+
+		for(int j = layerNum - 3; j >= 0; j--)
+		{
+			cudaMalloc((void**)&product, (zSize[j] + m) * sizeof(float));
+			cudaMalloc((void**)&sigGrad, zSize[j] * sizeof(float));
+			sigmoidGradVecGPU((zBaseGPU + zPos[j]), sigGrad, zSize[j]);
+			matMatMultiplyGPU((deltaBaseGPU + deltaPos[j + 1]), (thetaBaseGPU + thetaPos[j + 1]), product,
+			                  m, (layers[j + 1] + 1), layers[j + 2], CUBLAS_OP_N, CUBLAS_OP_T, m, (layers[j + 1] + 1), m);
+
+			vecVecElementMultiplyGPU((product + m), sigGrad, (deltaBaseGPU + deltaPos[j]), deltaSize[j]);
+
+			cudaFree(sigGrad);
+			cudaFree(product);
+		}
+
+		matMatMultiplyGPU((deltaBaseGPU + deltaPos[0]), xGPU, (DeltaBaseGPU + DeltaPos[0]),
+		                  (layers[1]), (layers[0] + 1), m, CUBLAS_OP_T, CUBLAS_OP_N, m, m, (layers[1]));
+
+		for(int j = 1; j < layerNum - 1; j++)
+			matMatMultiplyGPU((deltaBaseGPU + deltaPos[j]), (aBaseGPU + aPos[j - 1]), (DeltaBaseGPU + DeltaPos[j]),
+			                  (layers[j + 1]), (layers[j] + 1), m, CUBLAS_OP_T, CUBLAS_OP_N, m, m, (layers[j + 1]));
+
+		for(int j = 0; j < layerNum - 1; j++)
+			cublasSgeam(handle, CUBLAS_OP_N, CUBLAS_OP_T, (layers[j] + 1), layers[j + 1], &alpha2, (thetaBaseGPU + thetaPos[j]),
+			            (layers[j] + 1), &beta2, (DeltaBaseGPU + DeltaPos[j]), (layers[j + 1]), (thetaBaseGPU + thetaPos[j]),
+			            (layers[j] + 1));
 	}
 	cudaFree(zBaseGPU);
 	free(zPos);
@@ -554,9 +496,6 @@ double cublasNN::trainFuncApprox()
 	free(DeltaPos);
 	free(DeltaSize);
 
-	cudaFree(thetaGradBaseGPU);
-	free(thetaGradPos);
-	free(thetaGradSize);
 	auto end = chrono::steady_clock::now();
 	auto elapsed = end - start;
 	return chrono::duration <double> (elapsed).count();
