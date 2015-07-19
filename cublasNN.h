@@ -33,6 +33,7 @@ public:
 	void setClassify(bool c) { classification = c; }
 	void setAlpha(double a) { alpha = a; }
 	void setIters(int i) { iters = i; }
+	void setDisplay(int i) { display = i; }
 	void setLambda(int l) { lambda = l; }
 	void normaliseData() { normalise(x, m, n); }
 	void normaliseValidateData() { normalise(xValidate, mValidate, nValidate); }
@@ -52,20 +53,18 @@ private:
 	// CPU Linear Algebra Functions
 	float* mean(float* data, int a, int b);
 	float* stddev(float* data, float* mean, int a, int b);
-	//float trainFuncApprox();
-	//float trainConcurrentFuncApprox();
 
-	//float* randInitialiseWeights(int in, int out);
 	// GPU Linear Algebra Functions
 	float* addBias(float* data, int a, int b);
 	void allocVarGPU();
 	void matMatMultiplyGPU(const float *A, const float *B, float *C, const int a, const int b, const int c,
-							cublasOperation_t transa, cublasOperation_t transb, int lda, int ldb, int ldc);
+	                       cublasOperation_t transa, cublasOperation_t transb, int lda, int ldb, int ldc);
 
 	float alpha;
 	float lambda;
 	float JValidate;
 	int iters;
+	int display;
 	int layerNum;
 
 	float* x;
@@ -93,9 +92,6 @@ private:
 	bool xPredictGPUOld;
 	bool thetaBaseGPUOld;
 	int* layers;
-	//vector<float> J;
-	//vector<float> JBatch;
-	//vector<thread> t;
 	bool classification;
 
 	cudaError_t cudaStat;    
@@ -132,15 +128,6 @@ private:
 	int* DeltaPos;
 	int* DeltaSize;
 	int totalDeltaSize;
-
-	/*vector<float*> aFinal;
-	vector<float*> deltaFinal;
-	vector<float*> DeltaFinal;
-	vector<float*> thetaGradFinal;*/
-
-	// Functions for concurrency
-	void grad(size_t threadNum, int rangeLower, int rangeUpper);
-	void sumthetaGrad();
 };
 
 #endif // CUBLASNN_H

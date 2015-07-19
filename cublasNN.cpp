@@ -438,6 +438,7 @@ double cublasNN::trainFuncApprox()
 
 	for(int i = 0; i < iters; i++)
 	{
+		// Forward Propagate
 		matMatMultiplyGPU(xGPU, (thetaBaseGPU + thetaPos[0]), (zBaseGPU + zPos[0]), m, layers[1], (layers[0] + 1));
 		sigmoidVecGPU((zBaseGPU + zPos[0]), (aBaseGPU + aPos[0] + m), zSize[0]);
 		for(int j = 1; j < layerNum - 2; j++) 
@@ -452,14 +453,18 @@ double cublasNN::trainFuncApprox()
 		                  (zBaseGPU + zPos[layerNum - 2]), m, layers[layerNum - 1], (layers[layerNum - 2] + 1));
 		//sigmoidVecGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
 
+		// Calculate the last delta
 		vecVecSubtractGPU((zBaseGPU + zPos[layerNum - 2]), yGPU, (deltaBaseGPU + deltaPos[layerNum - 2]), zSize[layerNum - 2]);
 
+		// Calculate cost
 		cublasSdot(handle, deltaSize[layerNum - 2], (deltaBaseGPU + deltaPos[layerNum - 2]), 1,
 		           (deltaBaseGPU + deltaPos[layerNum - 2]), 1, &J);
 		J /= (2 * m);
 
-		cout << "Iteration: " << i << "\t" << "Cost: " << J << endl;
+		if((i + 1) % display == 0)
+			cout << "Iteration: " << i << "\t" << "Cost: " << J << endl;
 
+		// Calculate remaining deltas via backpropagation
 		for(int j = layerNum - 3; j >= 0; j--)
 		{
 			sigmoidGradVecGPU((zBaseGPU + zPos[j]), sigGrad, zSize[j]);
@@ -469,13 +474,14 @@ double cublasNN::trainFuncApprox()
 			vecVecElementMultiplyGPU((product + m), sigGrad, (deltaBaseGPU + deltaPos[j]), deltaSize[j]);
 		}
 
+		// Accumulate deltas to calculate Deltas
 		matMatMultiplyGPU((deltaBaseGPU + deltaPos[0]), xGPU, (DeltaBaseGPU + DeltaPos[0]),
 		                  (layers[1]), (layers[0] + 1), m, CUBLAS_OP_T, CUBLAS_OP_N, m, m, (layers[1]));
-
 		for(int j = 1; j < layerNum - 1; j++)
 			matMatMultiplyGPU((deltaBaseGPU + deltaPos[j]), (aBaseGPU + aPos[j - 1]), (DeltaBaseGPU + DeltaPos[j]),
 			                  (layers[j + 1]), (layers[j] + 1), m, CUBLAS_OP_T, CUBLAS_OP_N, m, m, (layers[j + 1]));
 
+		// Calculate gradients from Deltas and perform gradient descent
 		for(int j = 0; j < layerNum - 1; j++)
 			cublasSgeam(handle, CUBLAS_OP_N, CUBLAS_OP_T, (layers[j] + 1), layers[j + 1], &alpha2, (thetaBaseGPU + thetaPos[j]),
 			            (layers[j] + 1), &beta2, (DeltaBaseGPU + DeltaPos[j]), (layers[j + 1]), (thetaBaseGPU + thetaPos[j]),

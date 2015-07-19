@@ -32,7 +32,7 @@ __global__ void kernelSigmoidVec(const float* A, float* B, int M)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i < M)
-		B[i] = 1 / (1 + exp(-A[i]));
+		B[i] = 1 / (1 + expf(-A[i]));
 }
 
 __global__ void kernelSigmoidGradVec(const float* A, float* B, int M)
@@ -40,7 +40,7 @@ __global__ void kernelSigmoidGradVec(const float* A, float* B, int M)
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i < M)
 	{
-		float temp = 1 / (1 + exp(-A[i]));
+		float temp = 1 / (1 + expf(-A[i]));
 		B[i] = temp * (1 - temp);
 	}
 }

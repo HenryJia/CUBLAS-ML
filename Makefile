@@ -2,7 +2,8 @@ OutDir = ./Debug/
 CXX = g++
 NVCC = nvcc
 DEBUG = -g
-CXXFLAGS = $(DEBUG) -O1 -O -O3 -O0 -O2 -std=c++11 -Wall
+NVCCFLAGS = -O3 -arch=sm_52 --use_fast_math
+CXXFLAGS = $(DEBUG) -O -O0 -O1 -O2 -O3 -std=c++11 -Wall
 IncludePath = -I. -I/opt/cuda/include/
 LibPaths = -L. -L/opt/cuda/lib64/
 Libs = -lcuda -lcudart -lcurand -lcublas 
@@ -15,7 +16,7 @@ Directories:
 	mkdir -p $(OutDir)
 
 kernels.cu.o: #kernels.cu
-	$(NVCC) -c kernels.cu -o $(OutDir)kernels.cu.o
+	$(NVCC) -c $(NVCCFLAGS) kernels.cu -o $(OutDir)kernels.cu.o
 
 main.cpp.o: main.cpp
 	$(CXX) -c "/home/henry/Coding/C++/CUBLAS-ML/main.cpp" $(CXXFLAGS) -o $(OutDir)main.cpp.o $(IncludePath)
