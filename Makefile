@@ -2,7 +2,7 @@ OutDir = ./Debug/
 CXX = g++
 NVCC = nvcc
 DEBUG = -g
-NVCCFLAGS = -O3 -arch=sm_52 --use_fast_math
+NVCCFLAGS = -O3 -arch=sm_52
 CXXFLAGS = $(DEBUG) -O -O0 -O1 -O2 -O3 -std=c++11 -Wall
 IncludePath = -I. -I/opt/cuda/include/
 LibPaths = -L. -L/opt/cuda/lib64/
