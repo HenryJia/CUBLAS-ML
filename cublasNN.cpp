@@ -537,269 +537,68 @@ double cublasNN::trainFuncApprox()
 	float J;
 	float* product;
 	float* sigGrad;
+	const float alpha2 = 1.0f, beta2 = -alpha / m;
 
-	for(int t = 0; t < iters; t++)
+	for(int i = 0; i < iters; i++)
 	{
 		matMatMultiplyGPU(xGPU, (thetaBaseGPU + thetaPos[0]), (zBaseGPU + zPos[0]), m, layers[1], (layers[0] + 1));
 		sigmoidVecGPU((zBaseGPU + zPos[0]), (aBaseGPU + aPos[0] + m), zSize[0]);
-		for(int j = 1; j < layerNum - 2; j++)
-		{
+		for(int j = 1; j < layerNum - 2; j++) {
 			addBiasMatGPU((aBaseGPU + aPos[j - 1]), m);
 			matMatMultiplyGPU((aBaseGPU + aPos[j - 1]), (thetaBaseGPU + thetaPos[j]), (zBaseGPU + zPos[j]),
-				m, layers[j + 1], (layers[j] + 1));
+			                  m, layers[j + 1], (layers[j] + 1));
 			sigmoidVecGPU((zBaseGPU + zPos[j]), (aBaseGPU + aPos[j] + m), zSize[j]);
 		}
 		addBiasMatGPU((aBaseGPU + aPos[layerNum - 3]), m);
 		matMatMultiplyGPU((aBaseGPU + aPos[layerNum - 3]), (thetaBaseGPU + thetaPos[layerNum - 2]),
-			(zBaseGPU + zPos[layerNum - 2]), m, layers[layerNum - 1], (layers[layerNum - 2] + 1));
+		                  (zBaseGPU + zPos[layerNum - 2]), m, layers[layerNum - 1], (layers[layerNum - 2] + 1));
 		//sigmoidVecGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
 
-		//delta[base + layerNum - 2] = a[base + layerNum - 2] - datay;
 		vecVecSubtractGPU((zBaseGPU + zPos[layerNum - 2]), yGPU, (deltaBaseGPU + deltaPos[layerNum - 2]), zSize[layerNum - 2]);
 
-		/*float* temp = (float *)malloc(deltaSize[2] * sizeof(float)); //Debug Code
-		cudaMemcpy(temp, (deltaBaseGPU + deltaPos[2]), deltaSize[2] * sizeof(float), cudaMemcpyDeviceToHost);
-		for(int k = 0; k < 5; k++)
-		{
-			for(int l = 0; l < 1; l++)
-				cout << temp[IDX2C(k, l, m)] << '\t';
+		if(i > 25) {
+			float* temp = (float *)malloc(thetaSize[1] * sizeof(float)); //Debug Code
+			cudaMemcpy(temp, (thetaBaseGPU + thetaPos[1]), thetaSize[1] * sizeof(float), cudaMemcpyDeviceToHost);
+			for(int k = 0; k < 5; k++) {
+				for(int l = 0; l < 4; l++)
+					cout << temp[IDX2C(k, l, m)] << '\t';
+				cout << endl;
+			}
 			cout << endl;
+			free(temp);
 		}
-		cout << endl;
-		free(temp);*/
 
 		cublasSdot(handle, deltaSize[layerNum - 2], (deltaBaseGPU + deltaPos[layerNum - 2]), 1,
-					(deltaBaseGPU + deltaPos[layerNum - 2]), 1, &J);
+		           (deltaBaseGPU + deltaPos[layerNum - 2]), 1, &J);
 		J /= (2 * m);
 
-		cout << "Iteration: " << t << "\t" << "Cost: " << J << endl;
+		cout << "Iteration: " << i << "\t" << "Cost: " << J << endl;
 
-		const float alpha2 = 1.0f, beta2 = 0.0f;
-		/*cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_T, m, (layers[2] + 1), layers[3], &alpha2,
-		            (deltaBaseGPU + deltaPos[2]), m, (thetaBaseGPU + thetaPos[2]), (layers[2] + 1),
-		            &beta2, product, m);
-		cout << (layers[2] + 1) << " x " << layers[3] << endl;
-		temp = (float *)malloc((zSize[2] + m) * sizeof(float)); //Debug Code
-		cudaMemcpy(temp, product, (zSize[2] + m) * sizeof(float), cudaMemcpyDeviceToHost);
-		for(int k = 0; k < 5; k++)
-		{
-			for(int l = 0; l < 5; l++)
-				cout << temp[IDX2C(k, l, m)] << '\t';
-			cout << endl;
-		}
-		cout << endl;
-		free(temp);*/
 		for(int j = layerNum - 3; j >= 0; j--)
 		{
 			cudaMalloc((void**)&product, (zSize[j] + m) * sizeof(float));
 			cudaMalloc((void**)&sigGrad, zSize[j] * sizeof(float));
 			sigmoidGradVecGPU((zBaseGPU + zPos[j]), sigGrad, zSize[j]);
 			matMatMultiplyGPU((deltaBaseGPU + deltaPos[j + 1]), (thetaBaseGPU + thetaPos[j + 1]), product,
-				m, (layers[j + 1] + 1), layers[j + 2], CUBLAS_OP_N, CUBLAS_OP_T, m, (layers[j + 1] + 1), m);
-			/*cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_T, m, (layers[j + 1] + 1), layers[j + 2], &alpha2,
-				(deltaBaseGPU + deltaPos[j + 1]), m, (thetaBaseGPU + thetaPos[j + 1]), (layers[j + 1] + 1),
-				&beta2, product, m);*/
-			/*cout << (layers[j + 1] + 1) << " x " << layers[j + 2] << endl;
-			float* temp = (float *)malloc((zSize[j] + m) * sizeof(float)); //Debug Code
-			cudaMemcpy(temp, product, (zSize[j] + m) * sizeof(float), cudaMemcpyDeviceToHost);
-			for(int k = 0; k < 5; k++)
-			{
-				for(int l = 0; l < 5; l++)
-					cout << temp[IDX2C(k, l, m)] << '\t';
-				cout << endl;
-			}
-			cout << endl;
-			free(temp);
-
-			temp = (float *)malloc(thetaSize[j + 1] * sizeof(float)); //Debug Code
-			cudaMemcpy(temp, thetaBaseGPU + thetaPos[j + 1], thetaSize[j + 1] * sizeof(float), cudaMemcpyDeviceToHost);
-			for(int k = 0; k < 5; k++)
-			{
-				for(int l = 0; l < 1; l++)
-					cout << temp[IDX2C(k, l, m)] << '\t';
-				cout << endl;
-			}
-			cout << endl;
-			free(temp);*/
+			                  m, (layers[j + 1] + 1), layers[j + 2], CUBLAS_OP_N, CUBLAS_OP_T, m, (layers[j + 1] + 1), m);
 
 			vecVecElementMultiplyGPU((product + m), sigGrad, (deltaBaseGPU + deltaPos[j]), deltaSize[j]);
-			//cout << "j + 2 " << layers[j + 2] << "\t" << (layers[j + 1] + 1) << '\t' << (zSize[j] + m) << endl;
-
-			/*float* temp = (float *)malloc(deltaSize[j + 1] * sizeof(float)); //Debug Code
-			cudaMemcpy(temp, (deltaBaseGPU + deltaPos[j + 1]), deltaSize[j + 1] * sizeof(float), cudaMemcpyDeviceToHost);
-			for(int k = 0; k < 5; k++)
-			{
-				for(int l = 0; l < ((j == layerNum - 3) ? 1 : 5); l++)
-					cout << temp[IDX2C(k, l, m)] << '\t';
-				cout << endl;
-			}
-			cout << endl;
-			free(temp);
-
-
-			temp = (float *)malloc(thetaSize[j + 1] * sizeof(float)); //Debug Code
-			cudaMemcpy(temp, (thetaBaseGPU + thetaPos[j + 1]), thetaSize[j + 1] * sizeof(float), cudaMemcpyDeviceToHost);
-			for(int k = 0; k < 5; k++)
-			{
-				for(int l = 0; l < ((j == layerNum - 3) ? 1 : 5); l++)
-					cout << temp[IDX2C(k, l, (layers[j + 1] + 1))] << '\t';
-				cout << endl;
-			}
-			cout << endl;
-			free(temp);
-
-			temp = (float *)malloc((zSize[j] + m) * sizeof(float)); //Debug Code
-			cudaMemcpy(temp, product, (zSize[j] + m) * sizeof(float), cudaMemcpyDeviceToHost);
-			for(int k = 0; k < 5; k++)
-			{
-				for(int l = 0; l < 5; l++)
-					cout << temp[IDX2C(k, l, m)] << '\t';
-				cout << endl;
-			}
-			cout << endl;
-			free(temp);*/
-
-			/*temp = (float *)malloc(deltaSize[j] * sizeof(float)); //Debug Code
-			cudaMemcpy(temp, (deltaBaseGPU + deltaPos[j]), deltaSize[j] * sizeof(float), cudaMemcpyDeviceToHost);
-			for(int k = 0; k < 5; k++)
-			{
-				for(int l = 0; l < 5; l++)
-					cout << temp[IDX2C(k, l, m)] << '\t';
-				cout << endl;
-			}
-			cout << endl;
-			free(temp);
 
 			cudaFree(sigGrad);
-			cudaFree(product);*/
+			cudaFree(product);
 		}
 
-		//cublasSscal(handle, totalDeltaSize, &alpha, DeltaBaseGPU, 1);
-		/*float* temp = (float *)malloc(DeltaSize[0] * sizeof(float)); //Debug Code
-		cudaMemcpy(temp, (DeltaBaseGPU + DeltaPos[0]), DeltaSize[0] * sizeof(float), cudaMemcpyDeviceToHost);
-		for(int k = 0; k < 40; k++)
-		{
-			for(int l = 0; l < 11; l++)
-				cout << temp[IDX2C(k, l, (layers[1]))] << '\t';
-			cout << endl;
-		}
-		free(temp);*/
-
-		/*float* temp = (float *)malloc(deltaSize[0] * sizeof(float)); //Debug Code
-		cudaMemcpy(temp, (deltaBaseGPU + deltaPos[0]), deltaSize[0] * sizeof(float), cudaMemcpyDeviceToHost);
-		for(int k = 0; k < 5; k++)
-		{
-			for(int l = 0; l < (layers[1]); l++)
-				cout << temp[IDX2C(k, l, m)] << '\t';
-			cout << endl;
-		}
-		cout << endl;
-		free(temp);*/
 		matMatMultiplyGPU((deltaBaseGPU + deltaPos[0]), xGPU, (DeltaBaseGPU + DeltaPos[0]),
-			(layers[1]), (layers[0] + 1), m, CUBLAS_OP_T, CUBLAS_OP_N, m, m, (layers[1]));
-		/*cout << (layers[1]) << '\t' << (layers[0] + 1) << endl;
-		temp = (float *)malloc(DeltaSize[0] * sizeof(float)); //Debug Code
-		cudaMemcpy(temp, (DeltaBaseGPU + DeltaPos[0]), DeltaSize[0] * sizeof(float), cudaMemcpyDeviceToHost);
-		for(int k = 0; k < 5; k++)
-		{
-			for(int l = 0; l < 5; l++)
-				cout << temp[IDX2C(k, l, (layers[1]))] << '\t';
-			cout << endl;
-		}
-		cout << endl;
-		free(temp);*/
+		                  (layers[1]), (layers[0] + 1), m, CUBLAS_OP_T, CUBLAS_OP_N, m, m, (layers[1]));
+
 		for(int j = 1; j < layerNum - 1; j++)
-		{
 			matMatMultiplyGPU((deltaBaseGPU + deltaPos[j]), (aBaseGPU + aPos[j - 1]), (DeltaBaseGPU + DeltaPos[j]),
-			(layers[j + 1]), (layers[j] + 1), m, CUBLAS_OP_T, CUBLAS_OP_N, m, m, (layers[j + 1]));
-			/*temp = (float *)malloc(DeltaSize[j] * sizeof(float));
-			cudaMemcpy(temp, (DeltaBaseGPU + DeltaPos[j]), DeltaSize[j] * sizeof(float), cudaMemcpyDeviceToHost);
-			cout << layers[j + 1] << '\t' << (layers[j] + 1) << endl;
-			for(int k = 0; k < layers[j + 1] + 2; k++)
-			{
-				for(int l = 0; l < (layers[j] + 1) + 2; l++)
-					cout << temp[IDX2C(k, l, (layers[j + 1]))] << '\t';
-				cout << endl;
-			}
-			cout << endl;
-			free(temp);*/
-		}
-		/*for(int j = 0; j < layerNum - 1; j++)
-		{
-			temp = (float *)malloc(DeltaSize[j] * sizeof(float)); //Debug Code
-			cudaMemcpy(temp, (DeltaBaseGPU + DeltaPos[j]), DeltaSize[j] * sizeof(float), cudaMemcpyDeviceToHost);
-			for(int k = 0; k < 5; k++)
-			{
-				for(int l = 0; l < 5; l++)
-					cout << temp[IDX2C(k, l, (layers[j + 1]))] << '\t';
-				cout << endl;
-			}
-			cout << endl;
-			free(temp);
-		}*/
+			                  (layers[j + 1]), (layers[j] + 1), m, CUBLAS_OP_T, CUBLAS_OP_N, m, m, (layers[j + 1]));
 
-		/*for(int j = 0; j < layerNum - 1; j++)
-		{
-			cublasSgeam(handle, CUBLAS_OP_N, CUBLAS_OP_T, (layers[j] + 1), layers[j + 1], &alpha2, (thetaBaseGPU + thetaPos[j]),
-						(layers[j] + 1), &beta2, (DeltaBaseGPU + DeltaPos[j]), layers[j + 1], (thetaBaseGPU + thetaPos[j]),
-						(layers[j] + 1));
-		}*/
-
-		//const float alpha2 = 1.0, beta2 = 0.0f, alpha3 = alpha / m;
 		for(int j = 0; j < layerNum - 1; j++)
-		{
-			/*float* temp = (float *)malloc(DeltaSize[j] * sizeof(float)); //Debug Code
-			cudaMemcpy(temp, (DeltaBaseGPU + DeltaPos[j]), DeltaSize[j] * sizeof(float), cudaMemcpyDeviceToHost);
-			for(int k = 0; k < 5; k++)
-			{
-				for(int l = 0; l < 5; l++)
-					cout << temp[IDX2C(k, l, (layers[j + 1]))] << '\t';
-				cout << endl;
-			}
-			cout << endl;
-			cudaMemcpy(temp, (thetaBaseGPU + thetaGradPos[j]), thetaGradSize[j] * sizeof(float), cudaMemcpyDeviceToHost);
-			for(int k = 0; k < 5; k++)
-			{
-				for(int l = 0; l < 5; l++)
-					cout << temp[IDX2C(k, l, (layers[j] + 1))] << '\t';
-				cout << endl;
-			}
-			cout << endl;*/
-			const float alpha2 = 1.0f, beta2 = -alpha / m;
-			/*cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, (layers[j] + 1), layers[j + 1], &alpha2, (DeltaBaseGPU + DeltaPos[j]),
-						layers[j + 1], &beta2, (DeltaBaseGPU + DeltaPos[j]), (layers[j] + 1), (thetaGradBaseGPU + thetaGradPos[j]),
-						(layers[j] + 1));*/
 			cublasSgeam(handle, CUBLAS_OP_N, CUBLAS_OP_T, (layers[j] + 1), layers[j + 1], &alpha2, (thetaBaseGPU + thetaPos[j]),
-						(layers[j] + 1), &beta2, (DeltaBaseGPU + DeltaPos[j]), (layers[j + 1]), (thetaBaseGPU + thetaPos[j]),
-						(layers[j] + 1));
-			//matTranspose((DeltaBaseGPU + DeltaPos[j]), (thetaGradBaseGPU + thetaGradPos[j]), (layers[j] + 1), layers[j + 1]);
-			//transposeMatGPU((thetaGradBaseGPU + thetaGradPos[j]), (DeltaBaseGPU + DeltaPos[j]), layers[j + 1], (layers[j] + 1));
-			/*transposeMatGPU((thetaBaseGPU + thetaGradPos[j]), (DeltaBaseGPU + DeltaPos[j]), layers[j + 1], (layers[j] + 1));
-			cout << thetaGradPos[j] << '\t' << thetaGradSize[j] << endl;
-			cudaMemcpy(temp, (thetaBaseGPU + thetaGradPos[j]), thetaGradSize[j] * sizeof(float), cudaMemcpyDeviceToHost);
-			for(int k = 0; k < 5; k++)
-			{
-				for(int l = 0; l < 5; l++)
-					cout << temp[IDX2C(k, l, (layers[j] + 1))] << '\t';
-				cout << endl;
-			}
-			cout << endl;
-			free(temp);*/
-		}
-
-		//cublasSscal(handle, totalthetaGradSize, &alpha3, thetaGradBaseGPU, 1);
-		/*float* temp = (float *)malloc(thetaGradSize[0] * sizeof(float)); //Debug Code
-		cudaMemcpy(temp, (thetaGradBaseGPU + thetaGradPos[0]), thetaGradSize[0] * sizeof(float), cudaMemcpyDeviceToHost);
-		for(int k = 0; k < 5; k++)
-		{
-			for(int l = 0; l < 5; l++)
-				cout << temp[IDX2C(k, l, (layers[0] + 1))] << '\t';
-			cout << endl;
-		}
-		cout << endl;
-		free(temp);*/
-
-		//vecVecSubtractGPU(thetaBaseGPU, thetaGradBaseGPU, thetaBaseGPU, totalThetaSize);*/
+			            (layers[j] + 1), &beta2, (DeltaBaseGPU + DeltaPos[j]), (layers[j + 1]), (thetaBaseGPU + thetaPos[j]),
+			            (layers[j] + 1));
 	}
 	cudaFree(zBaseGPU);
 	free(zPos);
