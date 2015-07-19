@@ -61,7 +61,6 @@ private:
 	void allocVarGPU();
 	void matMatMultiplyGPU(const float *A, const float *B, float *C, const int a, const int b, const int c,
 							cublasOperation_t transa, cublasOperation_t transb, int lda, int ldb, int ldc);
-	void matTranspose(const float* A, float* B, const int a, const int b);
 
 	float alpha;
 	float lambda;
@@ -133,11 +132,6 @@ private:
 	int* DeltaPos;
 	int* DeltaSize;
 	int totalDeltaSize;
-
-	//float* thetaGradBaseGPU;
-	//int* thetaGradPos;
-	//int* thetaGradSize;
-	//int totalthetaGradSize;
 
 	/*vector<float*> aFinal;
 	vector<float*> deltaFinal;
