@@ -11,7 +11,7 @@ __global__ void kernelVecVecSubtract(const float* A, float* B, float* C, int M)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i < M)
-		C[i] = B[i] - A[i];
+		C[i] = A[i] - B[i];
 }
 
 __global__ void kernelVecVecElementMultiply(const float* A, float* B, float* C, int M)
