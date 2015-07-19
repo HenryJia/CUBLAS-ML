@@ -52,31 +52,6 @@ __global__ void kernelAddBiasMat(float* A, int M)
 		A[i] = 1.0f;
 }
 
-__global__ void kernelTransposeMat(float *odata, float *idata, int width, int height)
-{
-	__shared__ float block[BLOCK_DIM][BLOCK_DIM+1];
-	
-	// read the matrix tile into shared memory
-	unsigned int xIndex = blockIdx.x * BLOCK_DIM + threadIdx.x;
-	unsigned int yIndex = blockIdx.y * BLOCK_DIM + threadIdx.y;
-	if((xIndex < width) && (yIndex < height))
-	{
-		unsigned int index_in = yIndex * width + xIndex;
-		block[threadIdx.y][threadIdx.x] = idata[index_in];
-	}
-
-	__syncthreads();
-
-	// write the transposed matrix tile to global memory
-	xIndex = blockIdx.y * BLOCK_DIM + threadIdx.x;
-	yIndex = blockIdx.x * BLOCK_DIM + threadIdx.y;
-	if((xIndex < height) && (yIndex < width))
-	{
-		unsigned int index_out = yIndex * height + xIndex;
-		odata[index_out] = block[threadIdx.x][threadIdx.y];
-	}
-}
-
 void scaVecAddGPU(const float* A, const float alpha, float* B, int M)
 {
 	kernelScaVecAdd<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, alpha, B, M);
@@ -110,13 +85,4 @@ void sigmoidGradVecGPU(const float* A, float* B, int M)
 void addBiasMatGPU(float* A, int M)
 {
 	kernelAddBiasMat<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, M);
-}
-
-void transposeMatGPU(float *odata, float *idata, int size_x, int size_y)
-{
-	dim3 grid(size_x / BLOCK_DIM, size_y / BLOCK_DIM, 1);
-	dim3 threads(BLOCK_DIM, BLOCK_DIM, 1);
-	
-	// warmup so we don't time CUDA startup
-	kernelTransposeMat<<< grid, threads >>>(odata, idata, size_x, size_y);
 }
