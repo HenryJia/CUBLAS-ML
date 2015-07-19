@@ -430,6 +430,12 @@ double cublasNN::trainFuncApprox()
 	float* sigGrad;
 	const float alpha2 = 1.0f, beta2 = -alpha / m;
 
+	int zSizeMax = 0;
+	for(int i = 0; i < layerNum - 1; i++)
+		(zSizeMax < zSize[i] && (zSizeMax = zSize[i]));
+	cudaMalloc((void**)&product, (zSizeMax + m) * sizeof(float));
+	cudaMalloc((void**)&sigGrad, zSizeMax * sizeof(float));
+
 	for(int i = 0; i < iters; i++)
 	{
 		matMatMultiplyGPU(xGPU, (thetaBaseGPU + thetaPos[0]), (zBaseGPU + zPos[0]), m, layers[1], (layers[0] + 1));
@@ -456,16 +462,11 @@ double cublasNN::trainFuncApprox()
 
 		for(int j = layerNum - 3; j >= 0; j--)
 		{
-			cudaMalloc((void**)&product, (zSize[j] + m) * sizeof(float));
-			cudaMalloc((void**)&sigGrad, zSize[j] * sizeof(float));
 			sigmoidGradVecGPU((zBaseGPU + zPos[j]), sigGrad, zSize[j]);
 			matMatMultiplyGPU((deltaBaseGPU + deltaPos[j + 1]), (thetaBaseGPU + thetaPos[j + 1]), product,
 			                  m, (layers[j + 1] + 1), layers[j + 2], CUBLAS_OP_N, CUBLAS_OP_T, m, (layers[j + 1] + 1), m);
 
 			vecVecElementMultiplyGPU((product + m), sigGrad, (deltaBaseGPU + deltaPos[j]), deltaSize[j]);
-
-			cudaFree(sigGrad);
-			cudaFree(product);
 		}
 
 		matMatMultiplyGPU((deltaBaseGPU + deltaPos[0]), xGPU, (DeltaBaseGPU + DeltaPos[0]),
@@ -480,6 +481,10 @@ double cublasNN::trainFuncApprox()
 			            (layers[j] + 1), &beta2, (DeltaBaseGPU + DeltaPos[j]), (layers[j + 1]), (thetaBaseGPU + thetaPos[j]),
 			            (layers[j] + 1));
 	}
+
+	cudaFree(sigGrad);
+	cudaFree(product);
+
 	cudaFree(zBaseGPU);
 	free(zPos);
 	free(zSize);
