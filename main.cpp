@@ -36,16 +36,15 @@ int main(int argc, char **argv)
 	nn.normaliseValidateData();
 	nn.normalisePredictData();
 	nn.setAlpha(0.00025);
-	nn.setIters(1000);
-	nn.setDisplay(500);
-	nn.setClassify(false);
+	nn.setIters(30000);
+	nn.setDisplay(10000);
 	int layers[4] = {10, 40, 160, 1}; //The bias unit is auto added by the class.
 	nn.setLayers(layers, 4); //This will random initialise the weights
 	nn.addBiasData();
 	nn.addBiasDataValidate();
 	nn.addBiasDataPredict();
 	nn.copyDataGPU();
-	float concurrentTime = nn.trainFuncApprox();
+	float concurrentTime = nn.trainFuncApproxGradDescent(0.00025);
 	cout << "GPU Training " << concurrentTime << " s" << endl;
 	/*nn.validate();
 	cout << "Write CSV" << endl;

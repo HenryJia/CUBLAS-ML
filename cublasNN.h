@@ -30,7 +30,6 @@ public:
 	void setValidateData(vector<vector<float>> xVec, vector<vector<float>> yVec);
 	void setPredictData(vector<vector<float>> xVec);
 	void setLayers(int* layers, int lNum);
-	void setClassify(bool c) { classification = c; }
 	void setAlpha(double a) { alpha = a; }
 	void setIters(int i) { iters = i; }
 	void setDisplay(int i) { display = i; }
@@ -42,7 +41,7 @@ public:
 	void addBiasDataValidate() { float* temp = addBias(xValidate, mValidate, nValidate); free(xValidate); xValidate = temp; }
 	void addBiasDataPredict() { float* temp = addBias(xPredict, mPredict, nPredict); free(xPredict); xPredict = temp; }
 	void copyDataGPU();
-	double trainFuncApprox();
+	double trainFuncApproxGradDescent(float rate);
 
 private:
 	float* vector2dToMat(vector<vector<float>> data);
@@ -92,7 +91,6 @@ private:
 	bool xPredictGPUOld;
 	bool thetaBaseGPUOld;
 	int* layers;
-	bool classification;
 
 	cudaError_t cudaStat;    
 	cublasStatus_t stat;

@@ -421,14 +421,14 @@ void cublasNN::matMatMultiplyGPU(const float *A, const float *B, float *C, const
 	cublasSgemm(handle, transa, transb, a, b, c, &alpha, A, lda, B, ldb, &beta, C, ldc);
 }
 
-double cublasNN::trainFuncApprox()
+double cublasNN::trainFuncApproxGradDescent(float rate)
 {
 	auto start = chrono::steady_clock::now();
 	allocVarGPU();
 	float J;
 	float* product;
 	float* sigGrad;
-	const float alpha2 = 1.0f, beta2 = -alpha / m;
+	const float alpha2 = 1.0f, alpha = -rate / m;
 
 	int zSizeMax = 0;
 	for(int i = 0; i < layerNum - 1; i++)
@@ -484,7 +484,7 @@ double cublasNN::trainFuncApprox()
 		// Calculate gradients from Deltas and perform gradient descent
 		for(int j = 0; j < layerNum - 1; j++)
 			cublasSgeam(handle, CUBLAS_OP_N, CUBLAS_OP_T, (layers[j] + 1), layers[j + 1], &alpha2, (thetaBaseGPU + thetaPos[j]),
-			            (layers[j] + 1), &beta2, (DeltaBaseGPU + DeltaPos[j]), (layers[j + 1]), (thetaBaseGPU + thetaPos[j]),
+			            (layers[j] + 1), &alpha, (DeltaBaseGPU + DeltaPos[j]), (layers[j + 1]), (thetaBaseGPU + thetaPos[j]),
 			            (layers[j] + 1));
 	}
 
