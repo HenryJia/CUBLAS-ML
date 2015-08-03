@@ -41,7 +41,7 @@ public:
 	void addBiasDataValidate() { float* temp = addBias(xValidate, mValidate, nValidate); free(xValidate); xValidate = temp; }
 	void addBiasDataPredict() { float* temp = addBias(xPredict, mPredict, nPredict); free(xPredict); xPredict = temp; }
 	void copyDataGPU();
-	double trainFuncApproxGradDescent(float rate);
+	double trainFuncApproxGradDescent(float rate, int batchNum = 1);
 
 private:
 	float* vector2dToMat(vector<vector<float>> data);
@@ -55,7 +55,7 @@ private:
 
 	// GPU Linear Algebra Functions
 	float* addBias(float* data, int a, int b);
-	void allocVarGPU();
+	void allocVarGPU(int batchNum);
 	void matMatMultiplyGPU(const float *A, const float *B, float *C, const int a, const int b, const int c,
 	                       cublasOperation_t transa, cublasOperation_t transb, int lda, int ldb, int ldc);
 
@@ -126,6 +126,19 @@ private:
 	int* DeltaPos;
 	int* DeltaSize;
 	int totalDeltaSize;
+
+//For batch gradient descent
+	int* xPosBatch;
+	int* mBatch;
+
+	int** zPosBatch;
+	int** zSizeBatch;
+
+	int** aPosBatch;
+	int** aSizeBatch;
+
+	int** deltaPosBatch;
+	int** deltaSizeBatch;
 };
 
 #endif // CUBLASNN_H
