@@ -30,7 +30,6 @@ public:
 	void setValidateData(vector<vector<float>> xVec, vector<vector<float>> yVec);
 	void setPredictData(vector<vector<float>> xVec);
 	void setLayers(int* layers, int lNum);
-	void setAlpha(double a) { alpha = a; }
 	void setIters(int i) { iters = i; }
 	void setDisplay(int i) { display = i; }
 	void setLambda(int l) { lambda = l; }
