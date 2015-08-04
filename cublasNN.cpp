@@ -354,6 +354,7 @@ void cublasNN::allocVarGPU(int batchNum)
 // Split Data into mini-batches for mini-batch & stochastic methods
 
 	xPosBatch = (int*)malloc(batchNum * sizeof(int));
+	yPosBatch = (int*)malloc(batchNum * sizeof(int));
 	mBatch = (int*)malloc(batchNum * sizeof(int));
 
 	/*zPosBatch = (int**)malloc(batchNum * sizeof(int*));
@@ -384,6 +385,7 @@ void cublasNN::allocVarGPU(int batchNum)
 	for(int i = 0; i < (batchNum - 1); i++)
 	{
 		xPosBatch[i] = i * batchSize * (n + 1);
+		yPosBatch[i] = i * batchSize * layers[layerNum - 1];
 		mBatch[i] = batchSize;
 		mTotal += batchSize;
 		/*for(int j = 0; j < (layerNum - 1); j++)
@@ -402,10 +404,13 @@ void cublasNN::allocVarGPU(int batchNum)
 		}*/
 	}
 
-	cout << 'm' << '\t' << m << endl << "mTotal" << '\t' << mTotal << endl << endl;
+	cout << 'm' << '\t' << m << endl << "mTotal" << '\t' << mTotal << endl;
 	mBatch[batchNum - 1] = m - mTotal;
 	mBatchMax = mBatch[batchNum - 1] > batchSize ? mBatch[batchNum - 1] : batchSize;
 	xPosBatch[batchNum - 1] = (batchNum - 1) * batchSize * (n + 1);
+	yPosBatch[batchNum - 1] = (batchNum - 1) * batchSize * layers[layerNum - 1];
+	for(int i = 0; i < batchNum; i++)
+		cout << "yPosBatch" << '\t' << i << '\t' << yPosBatch[i] << endl;
 	/*for(int j = 0; j < (layerNum - 1); j++)
 	{
 		zPosBatch[batchNum - 1][j] = zPos[j] + (zSize[j] / m) * (batchNum - 1) * batchSize;
@@ -519,6 +524,7 @@ double cublasNN::trainFuncApproxGradDescent(float rate, int batchNum /*= 1*/)
 	{
 		for(int b = 0; b < batchNum; b++)
 		{
+			// variables like zSize and aSize are set to store the max possible, which is incorrect.
 			alpha = -rate / mBatch[b];
 			/*cout << "xPos " << '\t' << xPosBatch[b] << '\t' << "xSize" << '\t' << mBatch[b] * (n + 1) << endl;
 			for(int j = 0; j < layerNum - 1; j++)
@@ -542,7 +548,7 @@ double cublasNN::trainFuncApproxGradDescent(float rate, int batchNum /*= 1*/)
 			//sigmoidVecGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
 			
 			// Calculate the last delta
-			vecVecSubtractGPU((zBaseGPU + zPos[layerNum - 2]), yGPU, (deltaBaseGPU + deltaPos[layerNum - 2]), zSize[layerNum - 2]);
+			vecVecSubtractGPU((zBaseGPU + zPos[layerNum - 2]), yGPU + yPosBatch[b], (deltaBaseGPU + deltaPos[layerNum - 2]), zSize[layerNum - 2]);
 			
 			// Calculate cost
 			cublasSdot(handle, deltaSize[layerNum - 2], (deltaBaseGPU + deltaPos[layerNum - 2]), 1,
@@ -570,10 +576,11 @@ double cublasNN::trainFuncApproxGradDescent(float rate, int batchNum /*= 1*/)
 				                  (layers[j + 1]), (layers[j] + 1), mBatch[b], CUBLAS_OP_T, CUBLAS_OP_N, mBatch[b], mBatch[b], (layers[j + 1]));
 			
 			// Calculate gradients from Deltas and perform gradient descent
-			for(int j = 0; j < layerNum - 1; j++)
-				cublasSgeam(handle, CUBLAS_OP_N, CUBLAS_OP_T, (layers[j] + 1), layers[j + 1], &alpha2, (thetaBaseGPU + thetaPos[j]),
-				            (layers[j] + 1), &alpha, (DeltaBaseGPU + DeltaPos[j]), (layers[j + 1]), (thetaBaseGPU + thetaPos[j]),
-				            (layers[j] + 1));
+			if(i < iters - 1)
+				for(int j = 0; j < layerNum - 1; j++)
+					cublasSgeam(handle, CUBLAS_OP_N, CUBLAS_OP_T, (layers[j] + 1), layers[j + 1], &alpha2, (thetaBaseGPU + thetaPos[j]),
+					            (layers[j] + 1), &alpha, (DeltaBaseGPU + DeltaPos[j]), (layers[j + 1]), (thetaBaseGPU + thetaPos[j]),
+					            (layers[j] + 1));
 		}
 	}
 

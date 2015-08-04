@@ -43,7 +43,7 @@ int main(int argc, char **argv)
 	nn.addBiasDataValidate();
 	nn.addBiasDataPredict();
 	nn.copyDataGPU();
-	float concurrentTime = nn.trainFuncApproxGradDescent(0.0025, 2);
+	float concurrentTime = nn.trainFuncApproxGradDescent(0.025, 4);
 	cout << "GPU Training " << concurrentTime << " s" << endl;
 	/*nn.validate();
 	cout << "Write CSV" << endl;
