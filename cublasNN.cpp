@@ -464,6 +464,7 @@ void cublasNN::allocVarGPU(int batchNum)
 
 	cout << 'm' << '\t' << m << endl << "mTotal" << '\t' << mTotal << endl << endl;
 	mBatch[batchNum - 1] = m - mTotal;
+	mBatchMax = mBatch[batchNum - 1] > batchSize ? mBatch[batchNum - 1] : batchSize;
 	xPosBatch[batchNum - 1] = (batchNum - 1) * batchSize * (n + 1);
 	for(int j = 0; j < (layerNum - 1); j++)
 	{
@@ -506,25 +507,28 @@ double cublasNN::trainFuncApproxGradDescent(float rate, int batchNum /*= 1*/)
 	float J;
 	float* product;
 	float* sigGrad;
-	const float alpha2 = 1.0f, alpha = -rate / m;
+	const float alpha2 = 1.0f;
+	float alpha;
 
 	int zSizeMax = 0;
 	for(int i = 0; i < layerNum - 1; i++)
 		for(int b = 0; b < batchNum; b++)
 			(zSizeMax < zSizeBatch[b][i] && (zSizeMax = zSizeBatch[b][i]));
-	cudaMalloc((void**)&product, (zSizeMax + m) * sizeof(float));
+	cudaMalloc((void**)&product, (zSizeMax + mBatchMax) * sizeof(float));
 	cudaMalloc((void**)&sigGrad, zSizeMax * sizeof(float));
 
 	for(int i = 0; i < iters; i++)
 	{
 		for(int b = 0; b < batchNum; b++)
 		{
+			alpha = -rate / mBatch[b];
+			/*
 			cout << "xPos " << '\t' << xPosBatch[b] << '\t' << "xSize" << '\t' << mBatch[b] * (n + 1) << endl;
 			for(int j = 0; j < layerNum - 1; j++)
 			{
 				cout << "zPos " << '\t' << zPosBatch[b][j] << '\t' << "zSize" << '\t' << zSizeBatch[b][j] << endl;
 				cout << "aPos " << '\t' << aPosBatch[b][j] << '\t' << "aSize" << '\t' << aSizeBatch[b][j] << endl;
-			}
+			}*/
 			// Forward Propagate
 			matMatMultiplyGPU(xGPU + xPosBatch[b], (thetaBaseGPU + thetaPos[0]), (zBaseGPU + zPosBatch[b][0]), mBatch[b], layers[1], (layers[0] + 1));
 			sigmoidVecGPU((zBaseGPU + zPosBatch[b][0]), (aBaseGPU + aPosBatch[b][0] + mBatch[b]), zSizeBatch[b][0]);
