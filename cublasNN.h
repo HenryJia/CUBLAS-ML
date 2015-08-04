@@ -129,6 +129,7 @@ private:
 //For batch gradient descent
 	int* xPosBatch;
 	int* mBatch;
+	int mBatchMax;
 
 	int** zPosBatch;
 	int** zSizeBatch;
