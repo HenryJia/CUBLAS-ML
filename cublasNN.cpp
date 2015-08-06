@@ -253,8 +253,8 @@ void cublasNN::setLayers(int* l, int lNum)
 		totalThetaSize += thetaSize[i];
 		thetaPos[i + 1] = totalThetaSize;
 	}
-	thetaSize[(layerNum - 2)] = (l[(layerNum - 2)] + 1) * l[(layerNum - 1)];
-	totalThetaSize += thetaSize[(layerNum - 2)];
+	thetaSize[layerNum - 2] = (l[layerNum - 2] + 1) * l[layerNum - 1];
+	totalThetaSize += thetaSize[layerNum - 2];
 
 	if(thetaBaseGPUOld)
 		cudaFree(thetaBaseGPU);
@@ -389,9 +389,9 @@ void cublasNN::allocVarGPU(int batchNum)
 		zPos[i + 1] = totalzSize;
 		deltaPos[i + 1] = zPos[i + 1];
 	}
-	zSize[(layerNum - 2)] = layers[(layerNum - 1)] * mBatchMax;
-	deltaSize[(layerNum - 2)] = zSize[(layerNum - 2)];
-	totalzSize += zSize[(layerNum - 2)];
+	zSize[layerNum - 2] = layers[layerNum - 1] * mBatchMax;
+	deltaSize[layerNum - 2] = zSize[layerNum - 2];
+	totalzSize += zSize[layerNum - 2];
 	totaldeltaSize = totalzSize;
 
 	if(!aPos || !aSize)
@@ -407,8 +407,8 @@ void cublasNN::allocVarGPU(int batchNum)
 		totalaSize += aSize[i];
 		aPos[i + 1] = totalaSize;
 	}
-	aSize[(layerNum - 2)] = layers[(layerNum - 1)] * mBatchMax;
-	totalaSize += aSize[(layerNum - 2)];
+	aSize[layerNum - 2] = layers[layerNum - 1] * mBatchMax;
+	totalaSize += aSize[layerNum - 2];
 
 	if(!DeltaPos || !DeltaSize)
 	{
@@ -581,8 +581,8 @@ double cublasNN::trainFuncApproxGradDescent(float rate, int batchNum /*= 1*/)
 		totalzSize += zSize[i];
 		zPos[i + 1] = totalzSize;
 	}
-	zSize[(layerNum - 2)] = layers[(layerNum - 1)] * m;
-	totalzSize += zSize[(layerNum - 2)];
+	zSize[layerNum - 2] = layers[layerNum - 1] * m;
+	totalzSize += zSize[layerNum - 2];
 
 	totalaSize = 0;
 	aPos = (int*)malloc((layerNum - 1) * sizeof(*aPos));
@@ -595,8 +595,8 @@ double cublasNN::trainFuncApproxGradDescent(float rate, int batchNum /*= 1*/)
 		totalaSize += aSize[i];
 		aPos[i + 1] = totalaSize;
 	}
-	aSize[(layerNum - 2)] = layers[(layerNum - 1)] * m;
-	totalaSize += aSize[(layerNum - 2)];
+	aSize[layerNum - 2] = layers[layerNum - 1] * m;
+	totalaSize += aSize[layerNum - 2];
 
 	cudaMalloc((void**)&zBaseGPU, totalzSize * sizeof(float));
 	cudaMalloc((void**)&aBaseGPU, totalaSize * sizeof(float));
