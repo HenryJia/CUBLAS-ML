@@ -104,7 +104,7 @@ private:
 	int nValidate;
 	int nPredict;
 
-// Will need to free the pointers below
+	// Will need to free the pointers below
 
 	float* zBaseGPU;
 	int* zPos;
@@ -126,20 +126,11 @@ private:
 	int* DeltaSize;
 	int totalDeltaSize;
 
-//For batch gradient descent
+	// For batch gradient descent
 	int* xPosBatch;
 	int* yPosBatch;
 	int* mBatch;
 	int mBatchMax;
-
-	int** zPosBatch;
-	int** zSizeBatch;
-
-	int** aPosBatch;
-	int** aSizeBatch;
-
-	int** deltaPosBatch;
-	int** deltaSizeBatch;
 };
 
 #endif // CUBLASNN_H
