@@ -43,6 +43,10 @@ public:
 	double trainFuncApproxGradDescent(float rate, int batchNum = 1);
 
 private:
+	void splitData(int batchNum);
+	float calcFinalCost();
+	float gradDescentFuncApprox(float rate, int b /*short for batchNum*/);
+
 	float* vector2dToMat(vector<vector<float>> data);
 	void normalise(float* data, int a, int b);
 	float* copyGPU(float* data, int a, int b);
@@ -96,6 +100,8 @@ private:
 	cublasHandle_t handle;
 	curandGenerator_t gen;
 
+	const float alpha2 = 1.0f, beta2 = 0.0f;
+
 	int m;
 	int mValidate;
 	int mPredict;
@@ -105,32 +111,33 @@ private:
 	int nPredict;
 
 	// Will need to free the pointers below
-
 	float* zBaseGPU;
 	int* zPos;
 	int* zSize;
-	int totalzSize;
 
 	float* aBaseGPU;
 	int* aPos;
 	int* aSize;
-	int totalaSize;
 
 	float* deltaBaseGPU;
 	int* deltaPos;
 	int* deltaSize;
-	int totaldeltaSize;
 
 	float* DeltaBaseGPU;
 	int* DeltaPos;
 	int* DeltaSize;
-	int totalDeltaSize;
 
-	// For batch gradient descent
+	float* product;
+	float* sigGrad;
+
+	// For mini-batch/stochastic gradient descent
 	int* xPosBatch;
+	float *xTransGPU ;
+	float *xSplitGPU ;
 	int* yPosBatch;
+	float *yTransGPU;
+	float *ySplitGPU;
 	int* mBatch;
-	int mBatchMax;
 };
 
 #endif // CUBLASNN_H
