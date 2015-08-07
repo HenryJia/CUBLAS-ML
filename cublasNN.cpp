@@ -453,6 +453,9 @@ void cublasNN::splitData(int batchNum)
 		cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_T, mBatch[b], layers[layerNum - 1], &alpha2, yTransGPU + yPosBatch[b],
 		            layers[layerNum - 1], &beta2, yTransGPU + yPosBatch[b], layers[layerNum - 1], ySplitGPU + yPosBatch[b], mBatch[b]);
 	}
+
+	cudaFree(xTransGPU);
+	cudaFree(yTransGPU);
 }
 
 // Wrapper for cublasSgemm to make life easier C(m,n) = A(m,k) * B(k,n)
@@ -472,11 +475,19 @@ void cublasNN::matMatMultiplyGPU(const float *A, const float *B, float *C, const
 
 double cublasNN::trainFuncApproxGradDescent(float rate, int batchNum /*= 1*/)
 {
+	return trainFuncApproxMomentum(0, rate, batchNum);
+}
+double cublasNN::trainFuncApproxMomentum(float momentum, float rate, int batchNum /*= 1*/)
+{
 	auto start = chrono::steady_clock::now();
-	allocVarGPU(batchNum);
 
-	cudaFree(xTransGPU);
-	cudaFree(yTransGPU);
+	//momentum *= -1; // possible error
+	float* velocity;
+
+	cudaMalloc((void**)&velocity, totalThetaSize * sizeof(float));
+	cublasSscal(handle, totalThetaSize, &beta2, velocity, 1);
+
+	allocVarGPU(batchNum);
 
 	splitData(batchNum);
 
@@ -484,30 +495,24 @@ double cublasNN::trainFuncApproxGradDescent(float rate, int batchNum /*= 1*/)
 	{
 		for(int b = 0; b < batchNum; b++)
 		{
-			float J = gradDescentFuncApprox(rate, b);
-			if((i + 1) % display == 0)
+			float alpha = -rate / mBatch[b];
+			float J = gradFuncApprox(b);
+			if((i + 1) % display == 0 && b == 0)
 				cout << "Iteration: " << i << "\t" << "Cost: " << J << endl;
+			if(i < iters - 1)
+			for(int j = 0; j < layerNum - 1; j++)
+			{
+				cublasSgeam(handle, CUBLAS_OP_N, CUBLAS_OP_T, (layers[j] + 1), layers[j + 1], &momentum, (velocity + thetaPos[j]),
+				            (layers[j] + 1), &alpha, (DeltaBaseGPU + DeltaPos[j]), (layers[j + 1]), (velocity + thetaPos[j]),
+				            (layers[j] + 1));
+				cublasSgeam(handle, CUBLAS_OP_N, CUBLAS_OP_N, (layers[j] + 1), layers[j + 1], &alpha2, (thetaBaseGPU + thetaPos[j]),
+				            (layers[j] + 1), &alpha2, (velocity + thetaPos[j]), (layers[j] + 1), (thetaBaseGPU + thetaPos[j]),
+				            (layers[j] + 1));
+			}
 		}
 	}
 
-	cudaFree(sigGrad);
-	cudaFree(product);
-
-	cudaFree(zBaseGPU);
-	free(zPos);
-	free(zSize);
-
-	cudaFree(aBaseGPU);
-	free(aPos);
-	free(aSize);
-
-	cudaFree(deltaBaseGPU);
-	free(deltaPos);
-	free(deltaSize);
-
-	cudaFree(DeltaBaseGPU);
-	free(DeltaPos);
-	free(DeltaSize);
+	releaseGPUVar();
 
 	calcFinalCost();
 
@@ -516,10 +521,10 @@ double cublasNN::trainFuncApproxGradDescent(float rate, int batchNum /*= 1*/)
 	return chrono::duration <double> (elapsed).count();
 }
 
-float cublasNN::gradDescentFuncApprox(float rate, int b /*short for batchNum*/)
+float cublasNN::gradFuncApprox(int b /*short for batchNum*/)
 {
-	float alpha = -rate / mBatch[b];
 	float J;
+
 	// Forward Propagate
 	matMatMultiplyGPU(xSplitGPU + xPosBatch[b], (thetaBaseGPU + thetaPos[0]), (zBaseGPU + zPos[0]),
 	                  mBatch[b], layers[1], (layers[0] + 1));
@@ -563,10 +568,6 @@ float cublasNN::gradDescentFuncApprox(float rate, int b /*short for batchNum*/)
 		matMatMultiplyGPU((deltaBaseGPU + deltaPos[j]), (aBaseGPU + aPos[j - 1]), (DeltaBaseGPU + DeltaPos[j]),
 		                  (layers[j + 1]), (layers[j] + 1), mBatch[b], CUBLAS_OP_T, CUBLAS_OP_N, mBatch[b], mBatch[b], (layers[j + 1]));
 
-	for(int j = 0; j < layerNum - 1; j++)
-		cublasSgeam(handle, CUBLAS_OP_N, CUBLAS_OP_T, (layers[j] + 1), layers[j + 1], &alpha2, (thetaBaseGPU + thetaPos[j]),
-		            (layers[j] + 1), &alpha, (DeltaBaseGPU + DeltaPos[j]), (layers[j + 1]), (thetaBaseGPU + thetaPos[j]),
-		            (layers[j] + 1));
 	return J;
 }
 
@@ -640,4 +641,27 @@ float cublasNN::calcFinalCost()
 	cudaFree(deltaBaseGPU);
 
 	return J;
+}
+
+
+void cublasNN::releaseGPUVar()
+{
+	cudaFree(sigGrad);
+	cudaFree(product);
+
+	cudaFree(zBaseGPU);
+	free(zPos);
+	free(zSize);
+
+	cudaFree(aBaseGPU);
+	free(aPos);
+	free(aSize);
+
+	cudaFree(deltaBaseGPU);
+	free(deltaPos);
+	free(deltaSize);
+
+	cudaFree(DeltaBaseGPU);
+	free(DeltaPos);
+	free(DeltaSize);
 }

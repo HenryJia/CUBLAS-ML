@@ -35,15 +35,27 @@ int main(int argc, char **argv)
 	nn.normaliseData();
 	nn.normaliseValidateData();
 	nn.normalisePredictData();
-	nn.setIters(30000); //30000
-	nn.setDisplay(10000); //10000
+	nn.setIters(60000); //30000
+	nn.setDisplay(3000); //10000
 	int layers[4] = {10, 40, 160, 1}; //The bias unit is auto added by the class.
 	nn.setLayers(layers, 4); //This will random initialise the weights
 	nn.addBiasData();
 	nn.addBiasDataValidate();
 	nn.addBiasDataPredict();
 	nn.copyDataGPU();
-	float concurrentTime = nn.trainFuncApproxGradDescent(0.0025, 4);
+
+	/* Arguments for gradient descent:
+	 * 1. Learning rate
+	 * 2. Number of  batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
+	 */
+	//float concurrentTime = nn.trainFuncApproxGradDescent(0.0025, 4);
+
+	/* Arguments for momentum:
+	 * 1. Momentum/viscosity.
+	 * 2. Learning rate.
+	 * 3. Number of  batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
+	 */
+	float concurrentTime = nn.trainFuncApproxMomentum(0.9, 0.005, 1);
 	cout << "GPU Training " << concurrentTime << " s" << endl;
 	/*nn.validate();
 	cout << "Write CSV" << endl;

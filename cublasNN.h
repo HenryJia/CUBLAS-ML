@@ -41,11 +41,13 @@ public:
 	void addBiasDataPredict() { float* temp = addBias(xPredict, mPredict, nPredict); free(xPredict); xPredict = temp; }
 	void copyDataGPU();
 	double trainFuncApproxGradDescent(float rate, int batchNum = 1);
+	double trainFuncApproxMomentum(float momentum, float rate, int batchNum = 1);
 
 private:
 	void splitData(int batchNum);
 	float calcFinalCost();
-	float gradDescentFuncApprox(float rate, int b /*short for batchNum*/);
+	void releaseGPUVar();
+	float gradFuncApprox(int b /*short for batchNum*/);
 
 	float* vector2dToMat(vector<vector<float>> data);
 	void normalise(float* data, int a, int b);
