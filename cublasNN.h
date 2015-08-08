@@ -26,8 +26,8 @@ public:
 	~cublasNN();
 
 	vector<vector<float>> readCSV(string fileName, bool header, float &time);
-	void setData(vector<vector<float>> xVec, vector<vector<float>> yVec);
-	void setValidateData(vector<vector<float>> xVec, vector<vector<float>> yVec);
+	void setData(vector<vector<float>> xVec, vector<vector<float>> yVec, bool classify);
+	void setValidateData(vector<vector<float>> xVec, vector<vector<float>> yVec, bool classify);
 	void setPredictData(vector<vector<float>> xVec);
 	void setLayers(int* layers, int lNum);
 	void setIters(int i) { iters = i; }
@@ -42,14 +42,18 @@ public:
 	void copyDataGPU();
 	double trainFuncApproxGradDescent(float rate, int batchNum = 1);
 	double trainFuncApproxMomentum(float momentum, float rate, int batchNum = 1);
+	double trainClassifyGradDescent(float rate, int batchNum = 1);
+	double trainClassifyMomentum(float momentum, float rate, int batchNum = 1);
 
 private:
 	void splitData(int batchNum);
-	float calcFinalCost();
+	float calcFinalCost(bool classify);
 	void releaseGPUVar();
 	float gradFuncApprox(int b /*short for batchNum*/);
+	float gradClassify(int b /*short for batchNum*/);
 
 	float* vector2dToMat(vector<vector<float>> data);
+	float* classToBin(float* a, int m);
 	void normalise(float* data, int a, int b);
 	float* copyGPU(float* data, int a, int b);
 	float writeCSV(string fileName, float* data);
@@ -131,6 +135,7 @@ private:
 
 	float* product;
 	float* sigGrad;
+	float* JAll;
 
 	// For mini-batch/stochastic gradient descent
 	int* xPosBatch;

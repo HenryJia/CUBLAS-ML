@@ -110,7 +110,20 @@ float* cublasNN::vector2dToMat(vector<vector<float>> data)
 	return result;
 }
 
-void cublasNN::setData(vector<vector<float>> xVec, vector<vector<float>> yVec)
+float* cublasNN::classToBin(float* a, int m)
+{
+	float* yBin = (float*)malloc(m * layers[layerNum - 1] * sizeof(yBin));
+
+	for(int i = 0; i < m; i++)
+		for(int j = 0; j < layers[layerNum - 1]; j++)
+			yBin[IDX2C(i, j, m)] = 0;
+	for(int i = 0; i < m; i++)
+		yBin[(int)IDX2C(i, a[i], m)] = 1;
+
+	return yBin;
+}
+
+void cublasNN::setData(vector<vector<float>> xVec, vector<vector<float>> yVec, bool classify)
 {
 	m = xVec.size();
 	n = xVec[0].size();
@@ -120,11 +133,18 @@ void cublasNN::setData(vector<vector<float>> xVec, vector<vector<float>> yVec)
 		free(y);
 	}
 	x = vector2dToMat(xVec);
-	y = vector2dToMat(yVec);
+	if(classify == false)
+		y = vector2dToMat(yVec);
+	else
+	{
+		float *yRaw = vector2dToMat(yVec);
+		y = classToBin(yRaw, m);
+		free(yRaw);
+	}
 	xOld = true;
 }
 
-void cublasNN::setValidateData(vector<vector<float>> xVec, vector<vector<float>> yVec)
+void cublasNN::setValidateData(vector<vector<float>> xVec, vector<vector<float>> yVec, bool classify)
 {
 	mValidate = xVec.size();
 	nValidate = xVec[0].size();
@@ -308,7 +328,7 @@ void cublasNN::copyDataGPU()
 		cudaFree(yGPU);
 	}
 	xGPU = copyGPU(x, m, (n + 1));
-	yGPU = copyGPU(y, m, 1);
+	yGPU = copyGPU(y, m, layers[layerNum - 1]);
 	xGPUOld = true;
 }
 
@@ -424,6 +444,7 @@ void cublasNN::allocVarGPU(int batchNum)
 
 	cudaMalloc((void**)&product, (zSizeMax + mBatchMax) * sizeof(float));
 	cudaMalloc((void**)&sigGrad, zSizeMax * sizeof(float));
+	cudaMalloc((void**)&JAll, aSize[layerNum - 2] * sizeof(float));
 	cudaMalloc((void**)&zBaseGPU, totalzSize * sizeof(float));
 	cudaMalloc((void**)&aBaseGPU, totalaSize * sizeof(float));
 	cudaMalloc((void**)&deltaBaseGPU, totaldeltaSize * sizeof(float));
@@ -477,6 +498,7 @@ double cublasNN::trainFuncApproxGradDescent(float rate, int batchNum /*= 1*/)
 {
 	return trainFuncApproxMomentum(0, rate, batchNum);
 }
+
 double cublasNN::trainFuncApproxMomentum(float momentum, float rate, int batchNum /*= 1*/)
 {
 	auto start = chrono::steady_clock::now();
@@ -514,7 +536,56 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, int batchNu
 
 	releaseGPUVar();
 
-	calcFinalCost();
+	calcFinalCost(false);
+
+	auto end = chrono::steady_clock::now();
+	auto elapsed = end - start;
+	return chrono::duration <double> (elapsed).count();
+}
+
+double cublasNN::trainClassifyGradDescent(float rate, int batchNum /*= 1*/)
+{
+	return trainFuncApproxMomentum(0, rate, batchNum);
+}
+
+double cublasNN::trainClassifyMomentum(float momentum, float rate, int batchNum /*= 1*/)
+{
+	auto start = chrono::steady_clock::now();
+
+	//momentum *= -1; // possible error
+	float* velocity;
+
+	cudaMalloc((void**)&velocity, totalThetaSize * sizeof(float));
+	cublasSscal(handle, totalThetaSize, &beta2, velocity, 1);
+
+	allocVarGPU(batchNum);
+
+	splitData(batchNum);
+
+	for(int i = 0; i < iters; i++)
+	{
+		for(int b = 0; b < batchNum; b++)
+		{
+			float alpha = -rate / mBatch[b];
+			float J = gradClassify(b);
+			if((i + 1) % display == 0 && b == 0)
+				cout << "Iteration: " << i << "\t" << "Cost: " << J << endl;
+			if(i < iters - 1)
+			for(int j = 0; j < layerNum - 1; j++)
+			{
+				cublasSgeam(handle, CUBLAS_OP_N, CUBLAS_OP_T, (layers[j] + 1), layers[j + 1], &momentum, (velocity + thetaPos[j]),
+				            (layers[j] + 1), &alpha, (DeltaBaseGPU + DeltaPos[j]), (layers[j + 1]), (velocity + thetaPos[j]),
+				            (layers[j] + 1));
+				cublasSgeam(handle, CUBLAS_OP_N, CUBLAS_OP_N, (layers[j] + 1), layers[j + 1], &alpha2, (thetaBaseGPU + thetaPos[j]),
+				            (layers[j] + 1), &alpha2, (velocity + thetaPos[j]), (layers[j] + 1), (thetaBaseGPU + thetaPos[j]),
+				            (layers[j] + 1));
+			}
+		}
+	}
+
+	releaseGPUVar();
+
+	calcFinalCost(true);
 
 	auto end = chrono::steady_clock::now();
 	auto elapsed = end - start;
@@ -543,7 +614,6 @@ float cublasNN::gradFuncApprox(int b /*short for batchNum*/)
 	//sigmoidVecGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
 
 	// Calculate the last delta
-
 	vecVecSubtractGPU((zBaseGPU + zPos[layerNum - 2]), ySplitGPU + yPosBatch[b], (deltaBaseGPU + deltaPos[layerNum - 2]),
 	                  zSize[layerNum - 2]);
 
@@ -571,9 +641,59 @@ float cublasNN::gradFuncApprox(int b /*short for batchNum*/)
 	return J;
 }
 
-float cublasNN::calcFinalCost()
+float cublasNN::gradClassify(int b /*short for batchNum*/)
 {
 	float J;
+
+	// Forward Propagate
+	matMatMultiplyGPU(xSplitGPU + xPosBatch[b], (thetaBaseGPU + thetaPos[0]), (zBaseGPU + zPos[0]),
+	                  mBatch[b], layers[1], (layers[0] + 1));
+	sigmoidVecGPU((zBaseGPU + zPos[0]), (aBaseGPU + aPos[0] + mBatch[b]), zSize[0]);
+
+	for(int j = 1; j < layerNum - 2; j++)
+	{
+		addBiasMatGPU((aBaseGPU + aPos[j - 1]), mBatch[b]);
+		matMatMultiplyGPU((aBaseGPU + aPos[j - 1]), (thetaBaseGPU + thetaPos[j]), (zBaseGPU + zPos[j]),
+		                  mBatch[b], layers[j + 1], (layers[j] + 1));
+		sigmoidVecGPU((zBaseGPU + zPos[j]), (aBaseGPU + aPos[j] + mBatch[b]), zSize[j]);
+	}
+	addBiasMatGPU((aBaseGPU + aPos[layerNum - 3]), mBatch[b]);
+	matMatMultiplyGPU((aBaseGPU + aPos[layerNum - 3]), (thetaBaseGPU + thetaPos[layerNum - 2]),
+	                  (zBaseGPU + zPos[layerNum - 2]), mBatch[b], layers[layerNum - 1], (layers[layerNum - 2] + 1));
+	sigmoidVecGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
+
+	// Calculate the last delta
+
+	vecVecSubtractGPU((aBaseGPU + aPos[layerNum - 2]), ySplitGPU + yPosBatch[b], (deltaBaseGPU + deltaPos[layerNum - 2]),
+	                  aSize[layerNum - 2]);
+
+	// Calculate cost
+	negLnMaxCostGPU((aBaseGPU + aPos[layerNum - 2]), ySplitGPU + yPosBatch[b], JAll, aSize[layerNum - 2]);
+	cublasSasum(handle, aSize[layerNum - 2], JAll, 1, &J);
+	J /= mBatch[b];
+
+	// Calculate remaining deltas via backpropagation
+	for(int j = layerNum - 3; j >= 0; j--)
+	{
+		sigmoidGradVecGPU((zBaseGPU + zPos[j]), sigGrad, zSize[j]);
+		matMatMultiplyGPU((deltaBaseGPU + deltaPos[j + 1]), (thetaBaseGPU + thetaPos[j + 1]), product, mBatch[b],(layers[j + 1] + 1),
+		                  layers[j + 2], CUBLAS_OP_N, CUBLAS_OP_T, mBatch[b], (layers[j + 1] + 1), mBatch[b]);
+		vecVecElementMultiplyGPU((product + mBatch[b]), sigGrad, (deltaBaseGPU + deltaPos[j]), deltaSize[j]);
+	}
+
+	// Accumulate deltas to calculate Deltas
+	matMatMultiplyGPU((deltaBaseGPU + deltaPos[0]), xSplitGPU + xPosBatch[b], (DeltaBaseGPU + DeltaPos[0]),
+	                  (layers[1]), (layers[0] + 1), mBatch[b], CUBLAS_OP_T, CUBLAS_OP_N, mBatch[b], mBatch[b], (layers[1]));
+	for(int j = 1; j < layerNum - 1; j++)
+		matMatMultiplyGPU((deltaBaseGPU + deltaPos[j]), (aBaseGPU + aPos[j - 1]), (DeltaBaseGPU + DeltaPos[j]),
+		                  (layers[j + 1]), (layers[j] + 1), mBatch[b], CUBLAS_OP_T, CUBLAS_OP_N, mBatch[b], mBatch[b], (layers[j + 1]));
+
+	return J;
+}
+
+float cublasNN::calcFinalCost(bool classify)
+{
+	float J = 5;
 	int totalzSize = 0;
 	int totalaSize = 0;
 	zPos = (int*)malloc((layerNum - 1) * sizeof(*zPos));
@@ -620,14 +740,23 @@ float cublasNN::calcFinalCost()
 	addBiasMatGPU((aBaseGPU + aPos[layerNum - 3]), m);
 	matMatMultiplyGPU((aBaseGPU + aPos[layerNum - 3]), (thetaBaseGPU + thetaPos[layerNum - 2]),
 	                  (zBaseGPU + zPos[layerNum - 2]), m, layers[layerNum - 1], (layers[layerNum - 2] + 1));
-	//sigmoidVecGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
 
 	// Calculate the last delta
-	vecVecSubtractGPU((zBaseGPU + zPos[layerNum - 2]), yGPU, deltaBaseGPU, zSize[layerNum - 2]);
+	if(classify == true)
+	{
+		sigmoidVecGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
+		negLnMaxCostGPU((aBaseGPU + aPos[layerNum - 2]), yGPU, JAll, aSize[layerNum - 2]);
+		cublasSasum(handle, aSize[layerNum - 2], JAll, 1, &J);
+		J /= m;
+	}
+	else
+	{
+		vecVecSubtractGPU((aBaseGPU + aPos[layerNum - 2]), yGPU, deltaBaseGPU, aSize[layerNum - 2]);
+		cublasSdot(handle, deltaSize[layerNum - 2], (deltaBaseGPU + deltaPos[layerNum - 2]), 1,
+		           (deltaBaseGPU + deltaPos[layerNum - 2]), 1, &J);
+		J /= (2 * m);
+	}
 
-	// Calculate cost
-	cublasSdot(handle, (m * layers[layerNum - 1]), deltaBaseGPU, layers[layerNum - 1], deltaBaseGPU, layers[layerNum - 1], &J);
-	J /= (2 * m);
 	cout << "Final Cost: " << J << endl;
 
 	cudaFree(zBaseGPU);
