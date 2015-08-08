@@ -86,7 +86,7 @@ int main(int argc, char **argv)
 	cout << csvTime << " s" << endl;
 
 	// Note for classification setting the layers must be done before setting the data because the dimensions of the y must be known.
-	int layers[4] = {783, 500, 100, 10}; //The bias unit is auto added by the class.
+	int layers[4] = {784, 500, 100, 10}; //The bias unit is auto added by the class.
 	nn->setLayers(layers, 4); //This will random initialise the weights
 	nn->setData(xVec, yVec, true);
 	nn->setValidateData(xVecValidate, yVecValidate, true);
