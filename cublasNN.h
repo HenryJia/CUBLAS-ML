@@ -46,27 +46,29 @@ public:
 	double trainClassifyMomentum(float momentum, float rate, int batchNum = 1);
 
 private:
+
+	// Functions for training
 	void splitData(int batchNum);
 	float calcFinalCost(bool classify);
-	void releaseGPUVar();
+	void releaseVar(bool hessian);
+	void allocVar(int batchNum, bool hessian);
 	float gradFuncApprox(int b /*short for batchNum*/);
 	float gradClassify(int b /*short for batchNum*/);
+	float hessClassify(int b /*short for batchNum*/);
+	// A wrapper for the cublasSgemm function to shorten code and make life easier
+	void matMatMultiplyGPU(const float *A, const float *B, float *C, const int a, const int b, const int c,
+	                       cublasOperation_t transa, cublasOperation_t transb, const int lda, const int ldb, const int ldc);
 
 	float* vector2dToMat(vector<vector<float>> data);
 	float* classToBin(float* a, int m);
-	void normalise(float* data, int a, int b);
+	float* addBias(float* data, int a, int b);
 	float* copyGPU(float* data, int a, int b);
 	float writeCSV(string fileName, float* data);
 
 	// CPU Linear Algebra Functions
+	void normalise(float* data, int a, int b);
 	float* mean(float* data, int a, int b);
 	float* stddev(float* data, float* mean, int a, int b);
-
-	// GPU Linear Algebra Functions
-	float* addBias(float* data, int a, int b);
-	void allocVarGPU(int batchNum);
-	void matMatMultiplyGPU(const float *A, const float *B, float *C, const int a, const int b, const int c,
-	                       cublasOperation_t transa, cublasOperation_t transb, int lda, int ldb, int ldc);
 
 	float alpha;
 	float lambda;
@@ -137,13 +139,28 @@ private:
 	float* sigGrad;
 	float* JAll;
 
+	// For diagonal approximation
+	float* delta2BaseGPU;
+	int* delta2Pos;
+	int* delta2Size;
+
+	float* Delta2BaseGPU;
+	int* Delta2Pos;
+	int* Delta2Size;
+
+	float* sigGrad2;
+	float* product2;
+	float* theta2;
+
 	// For mini-batch/stochastic gradient descent
 	int* xPosBatch;
 	float *xTransGPU ;
 	float *xSplitGPU ;
+
 	int* yPosBatch;
 	float *yTransGPU;
 	float *ySplitGPU;
+
 	int* mBatch;
 };
 

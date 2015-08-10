@@ -354,11 +354,11 @@ float* cublasNN::copyGPU(float* data, int a, int b)
 	return dataGPU;
 }
 
-void cublasNN::allocVarGPU(int batchNum)
+void cublasNN::allocVar(int batchNum, bool hessian)
 {
 	int totaldeltaSize = 0, totalaSize = 0, totalzSize = 0, totalDeltaSize = 0, mTotal = 0;
 	int batchSize = m / batchNum;
-	int mBatchMax;
+	int mBatchMax, zSizeMax = 0;
 	zPos = (int*)malloc((layerNum - 1) * sizeof(*zPos));
 	zSize = (int*)malloc((layerNum - 1) * sizeof(*zSize));
 
@@ -441,9 +441,8 @@ void cublasNN::allocVarGPU(int batchNum)
 	}
 	totalDeltaSize = totalThetaSize;
 
-	int zSizeMax = 0;
 	for(int i = 0; i < layerNum - 1; i++)
-		(zSizeMax < zSize[i] && (zSizeMax = zSize[i]));
+		(zSize[i] > zSizeMax && (zSizeMax = zSize[i]));
 
 	cudaMalloc((void**)&product, (zSizeMax + mBatchMax) * sizeof(float));
 	cudaMalloc((void**)&sigGrad, zSizeMax * sizeof(float));
@@ -452,6 +451,35 @@ void cublasNN::allocVarGPU(int batchNum)
 	cudaMalloc((void**)&aBaseGPU, totalaSize * sizeof(float));
 	cudaMalloc((void**)&deltaBaseGPU, totaldeltaSize * sizeof(float));
 	cudaMalloc((void**)&DeltaBaseGPU, totalDeltaSize * sizeof(float));
+
+	if(hessian)
+	{
+		int thetaSizeMax = 0;
+
+		delta2Pos = (int*)malloc((layerNum - 1) * sizeof(*deltaPos));
+		delta2Size = (int*)malloc((layerNum - 1) * sizeof(*deltaSize));
+
+		Delta2Pos = (int*)malloc((layerNum - 1) * sizeof(*DeltaPos));
+		Delta2Size = (int*)malloc((layerNum - 1) * sizeof(*DeltaSize));
+
+		for(int i = 0; i < (layerNum - 1); i++)
+		{
+			delta2Pos[i] = zPos[i];
+			delta2Size[i] = zSize[i];
+
+			Delta2Pos[i] = thetaPos[i];
+			Delta2Size[i] = thetaSize[i];
+		}
+
+		for(int i = 0; i < (layerNum - 1); i++)
+			(thetaSize[i] > thetaSizeMax && (thetaSizeMax = thetaSize[i]));
+
+		cudaMalloc((void**)&product2, (zSizeMax + mBatchMax) * sizeof(float));
+		cudaMalloc((void**)&sigGrad2, zSizeMax * sizeof(float));
+		cudaMalloc((void**)&theta2, thetaSizeMax * sizeof(float));
+		cudaMalloc((void**)&delta2BaseGPU, totaldeltaSize * sizeof(float));
+		cudaMalloc((void**)&Delta2BaseGPU, totalDeltaSize * sizeof(float));
+	}
 }
 
 void cublasNN::splitData(int batchNum)
@@ -512,7 +540,7 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, int batchNu
 	cudaMalloc((void**)&velocity, totalThetaSize * sizeof(float));
 	cublasSscal(handle, totalThetaSize, &beta2, velocity, 1);
 
-	allocVarGPU(batchNum);
+	allocVar(batchNum, false);
 
 	splitData(batchNum);
 
@@ -537,7 +565,7 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, int batchNu
 		}
 	}
 
-	releaseGPUVar();
+	releaseVar(false);
 
 	calcFinalCost(false);
 
@@ -561,7 +589,7 @@ double cublasNN::trainClassifyMomentum(float momentum, float rate, int batchNum 
 	cudaMalloc((void**)&velocity, totalThetaSize * sizeof(float));
 	cublasSscal(handle, totalThetaSize, &beta2, velocity, 1);
 
-	allocVarGPU(batchNum);
+	allocVar(batchNum, false);
 
 	splitData(batchNum);
 
@@ -586,7 +614,7 @@ double cublasNN::trainClassifyMomentum(float momentum, float rate, int batchNum 
 		}
 	}
 
-	releaseGPUVar();
+	releaseVar(false);
 
 	calcFinalCost(true);
 
@@ -606,12 +634,12 @@ float cublasNN::gradFuncApprox(int b /*short for batchNum*/)
 
 	for(int j = 1; j < layerNum - 2; j++)
 	{
-		addBiasMatGPU((aBaseGPU + aPos[j - 1]), mBatch[b]);
+		onesVecGPU((aBaseGPU + aPos[j - 1]), mBatch[b]);
 		matMatMultiplyGPU((aBaseGPU + aPos[j - 1]), (thetaBaseGPU + thetaPos[j]), (zBaseGPU + zPos[j]),
 		                  mBatch[b], layers[j + 1], (layers[j] + 1));
 		sigmoidVecGPU((zBaseGPU + zPos[j]), (aBaseGPU + aPos[j] + mBatch[b]), zSize[j]);
 	}
-	addBiasMatGPU((aBaseGPU + aPos[layerNum - 3]), mBatch[b]);
+	onesVecGPU((aBaseGPU + aPos[layerNum - 3]), mBatch[b]);
 	matMatMultiplyGPU((aBaseGPU + aPos[layerNum - 3]), (thetaBaseGPU + thetaPos[layerNum - 2]),
 	                  (zBaseGPU + zPos[layerNum - 2]), mBatch[b], layers[layerNum - 1], (layers[layerNum - 2] + 1));
 	//sigmoidVecGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
@@ -655,12 +683,12 @@ float cublasNN::gradClassify(int b /*short for batchNum*/)
 
 	for(int j = 1; j < layerNum - 2; j++)
 	{
-		addBiasMatGPU((aBaseGPU + aPos[j - 1]), mBatch[b]);
+		onesVecGPU((aBaseGPU + aPos[j - 1]), mBatch[b]);
 		matMatMultiplyGPU((aBaseGPU + aPos[j - 1]), (thetaBaseGPU + thetaPos[j]), (zBaseGPU + zPos[j]),
 		                  mBatch[b], layers[j + 1], (layers[j] + 1));
 		sigmoidVecGPU((zBaseGPU + zPos[j]), (aBaseGPU + aPos[j] + mBatch[b]), zSize[j]);
 	}
-	addBiasMatGPU((aBaseGPU + aPos[layerNum - 3]), mBatch[b]);
+	onesVecGPU((aBaseGPU + aPos[layerNum - 3]), mBatch[b]);
 	matMatMultiplyGPU((aBaseGPU + aPos[layerNum - 3]), (thetaBaseGPU + thetaPos[layerNum - 2]),
 	                  (zBaseGPU + zPos[layerNum - 2]), mBatch[b], layers[layerNum - 1], (layers[layerNum - 2] + 1));
 	sigmoidVecGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
@@ -735,12 +763,12 @@ float cublasNN::calcFinalCost(bool classify)
 	sigmoidVecGPU((zBaseGPU + zPos[0]), (aBaseGPU + aPos[0] + m), zSize[0]);
 	for(int j = 1; j < layerNum - 2; j++)
 	{
-		addBiasMatGPU((aBaseGPU + aPos[j - 1]), m);
+		onesVecGPU((aBaseGPU + aPos[j - 1]), m);
 		matMatMultiplyGPU((aBaseGPU + aPos[j - 1]), (thetaBaseGPU + thetaPos[j]), (zBaseGPU + zPos[j]),
 		                  m, layers[j + 1], (layers[j] + 1));
 		sigmoidVecGPU((zBaseGPU + zPos[j]), (aBaseGPU + aPos[j] + m), zSize[j]);
 	}
-	addBiasMatGPU((aBaseGPU + aPos[layerNum - 3]), m);
+	onesVecGPU((aBaseGPU + aPos[layerNum - 3]), m);
 	matMatMultiplyGPU((aBaseGPU + aPos[layerNum - 3]), (thetaBaseGPU + thetaPos[layerNum - 2]),
 	                  (zBaseGPU + zPos[layerNum - 2]), m, layers[layerNum - 1], (layers[layerNum - 2] + 1));
 
@@ -801,7 +829,7 @@ float cublasNN::calcFinalCost(bool classify)
 }
 
 
-void cublasNN::releaseGPUVar()
+void cublasNN::releaseVar(bool hessian)
 {
 	cudaFree(sigGrad);
 	cudaFree(product);
@@ -822,4 +850,19 @@ void cublasNN::releaseGPUVar()
 	cudaFree(DeltaBaseGPU);
 	free(DeltaPos);
 	free(DeltaSize);
+
+	if(hessian)
+	{
+		cudaFree(sigGrad2);
+		cudaFree(product2);
+		cudaFree(theta2);
+
+		cudaFree(delta2BaseGPU);
+		free(delta2Pos);
+		free(delta2Size);
+		
+		cudaFree(Delta2BaseGPU);
+		free(Delta2Pos);
+		free(Delta2Size);
+	}
 }

@@ -45,7 +45,7 @@ __global__ void kernelSigmoidGradVec(const float* A, float* B, int M)
 	}
 }
 
-__global__ void kernelAddBiasMat(float* A, int M)
+__global__ void kernelOnesVec(float* A, int M)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if(i < M)
@@ -110,9 +110,9 @@ void sigmoidGradVecGPU(const float* A, float* B, int M)
 	kernelSigmoidGradVec<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, B, M);
 }
 
-void addBiasMatGPU(float* A, int M)
+void onesVecGPU(float* A, int M)
 {
-	kernelAddBiasMat<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, M);
+	kernelOnesVec<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, M);
 }
 
 void probToNumGPU(float* hProb, float* hNum, int M, int N)
