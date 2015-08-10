@@ -86,13 +86,16 @@ int main(int argc, char **argv)
 	cout << csvTime << " s" << endl;
 
 	// Note for classification setting the layers must be done before setting the data because the dimensions of the y must be known.
-	int layers[4] = {784, 500, 100, 10}; //The bias unit is auto added by the class.
+	int layers[4] = {784, 500, 150, 10}; //The bias unit is auto added by the class.
 	nn->setLayers(layers, 4); //This will random initialise the weights
 	nn->setData(xVec, yVec, true);
 	nn->setValidateData(xVecValidate, yVecValidate, true);
 	nn->setPredictData(xVecPredict);
-	nn->setIters(100);
-	nn->setDisplay(10);
+	nn->normaliseData();
+	nn->normaliseValidateData();
+	nn->normalisePredictData();
+	nn->setIters(500);
+	nn->setDisplay(50);
 	nn->addBiasData();
 	nn->addBiasDataValidate();
 	nn->addBiasDataPredict();
@@ -109,7 +112,7 @@ int main(int argc, char **argv)
 	 * 2. Learning rate.
 	 * 3. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
 	 */
-	float gpuTime = nn->trainClassifyMomentum(0.9, 0.1, 1);
+	float gpuTime = nn->trainClassifyMomentum(0.9, 0.075, 1);
 	cout << "GPU Training " << gpuTime << " s" << endl;
 
 	// Not yet implemented

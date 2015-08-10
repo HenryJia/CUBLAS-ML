@@ -180,7 +180,10 @@ void cublasNN::normalise(float* data, int a, int b)
 		for(int j = 0; j < b; j++)
 		{
 			data[IDX2C(i, j, a)] = data[IDX2C(i, j, a)] - Mean[j];
-			data[IDX2C(i, j, a)] = data[IDX2C(i, j, a)] / Stddev[j];
+			if(Stddev[j] != 0)
+				data[IDX2C(i, j, a)] = data[IDX2C(i, j, a)] / Stddev[j];
+			else
+				data[IDX2C(i, j, a)] = 0;
 		}
 	}
 	free(Mean);
@@ -759,6 +762,31 @@ float cublasNN::calcFinalCost(bool classify)
 
 	cout << "Final Cost: " << J << endl;
 
+	if(classify == true)
+	{
+		float* predictNum;
+		float* yNum;
+		float* errors;
+		float* temp;
+		float errorCount;
+		cudaMalloc((void**)&errors, m * sizeof(float));
+		cudaMalloc((void**)&predictNum, m * sizeof(float));
+		cudaMalloc((void**)&yNum, m * sizeof(float));
+		temp = (float*)malloc(m * sizeof(float));
+		probToNumGPU((aBaseGPU + aPos[layerNum - 2]), predictNum, m, layers[layerNum - 1]);
+		probToNumGPU(yGPU, yNum, m, layers[layerNum - 1]);
+		cudaMemcpy(temp, yNum, m * sizeof(float), cudaMemcpyDeviceToHost);
+		for(int i = m - 5; i <  m; i++)
+			cout << temp[i] << endl;
+		countErrorGPU(predictNum, yNum, errors, m);
+		cublasSasum(handle, m, errors, 1, &errorCount);
+		cout << "Error frequency" << '\t' << setprecision(15) << errorCount / m << endl;
+		free(temp);
+		cudaFree(errors);
+		cudaFree(predictNum);
+		cudaFree(yNum);
+	}
+
 	cudaFree(zBaseGPU);
 	free(zPos);
 	free(zSize);
@@ -777,6 +805,7 @@ void cublasNN::releaseGPUVar()
 {
 	cudaFree(sigGrad);
 	cudaFree(product);
+	cudaFree(JAll);
 
 	cudaFree(zBaseGPU);
 	free(zPos);
