@@ -44,6 +44,7 @@ public:
 	double trainFuncApproxMomentum(float momentum, float rate, int batchNum = 1);
 	double trainClassifyGradDescent(float rate, int batchNum = 1);
 	double trainClassifyMomentum(float momentum, float rate, int batchNum = 1);
+	double trainClassifyQuasiNewton(int batchNum = 1);
 
 private:
 
@@ -54,10 +55,10 @@ private:
 	void allocVar(int batchNum, bool hessian);
 	float gradFuncApprox(int b /*short for batchNum*/);
 	float gradClassify(int b /*short for batchNum*/);
-	float hessClassify(int b /*short for batchNum*/);
+	void hessClassify(int b /*short for batchNum*/);
 	// A wrapper for the cublasSgemm function to shorten code and make life easier
-	void matMatMultiplyGPU(const float *A, const float *B, float *C, const int a, const int b, const int c,
-	                       cublasOperation_t transa, cublasOperation_t transb, const int lda, const int ldb, const int ldc);
+	void matMatMultiplyGPU(const float *A, const float *B, float *C, const int a, const int b, const int c, cublasOperation_t transa,
+	                       cublasOperation_t transb, const int lda, const int ldb, const int ldc, float alpha, float beta);
 
 	float* vector2dToMat(vector<vector<float>> data);
 	float* classToBin(float* a, int m);
@@ -70,7 +71,8 @@ private:
 	float* mean(float* data, int a, int b);
 	float* stddev(float* data, float* mean, int a, int b);
 
-	float alpha;
+	const float one = 1.0f, zero = 0.0f, negOne = -1.0f, mu = 1.0e-5;
+
 	float lambda;
 	float JValidate;
 	int iters;
@@ -108,8 +110,6 @@ private:
 	cublasHandle_t handle;
 	curandGenerator_t gen;
 
-	const float alpha2 = 1.0f, beta2 = 0.0f;
-
 	int m;
 	int mValidate;
 	int mPredict;
@@ -135,8 +135,14 @@ private:
 	int* DeltaPos;
 	int* DeltaSize;
 
-	float* product;
-	float* sigGrad;
+	float* sigGradBaseGPU;
+	int* sigGradPos;
+	int* sigGradSize;
+
+	float* productBaseGPU;
+	int* productPos;
+	int* productSize;
+
 	float* JAll;
 
 	// For diagonal approximation
@@ -148,14 +154,18 @@ private:
 	int* Delta2Pos;
 	int* Delta2Size;
 
+	float* hessianBaseGPU;
+
+	float* sigGradSq;
 	float* sigGrad2;
-	float* product2;
-	float* theta2;
+	float* productHess;
+	float* aSq;
+	float* thetaSq;
 
 	// For mini-batch/stochastic gradient descent
 	int* xPosBatch;
-	float *xTransGPU ;
-	float *xSplitGPU ;
+	float *xTransGPU;
+	float *xSplitGPU;
 
 	int* yPosBatch;
 	float *yTransGPU;
