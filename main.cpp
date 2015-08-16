@@ -73,32 +73,32 @@ int main(int argc, char **argv)
 	cout << "Read CSV: " << endl;
 	float csvTime = 0;
 	float csvTime2 = 0;
-	vector<vector<float>> xVec = nn->readCSV("../MNIST/trainX.csv", false, csvTime2);
+	vector<vector<float>> xVec = nn->readCSV("../MNIST/trainXnonZero.csv", false, csvTime2);
 	csvTime += csvTime2;
 	vector<vector<float>> yVec = nn->readCSV("../MNIST/trainY.csv", false, csvTime2);
 	csvTime += csvTime2;
-	vector<vector<float>> xVecValidate = nn->readCSV("../MNIST/validateX.csv", false, csvTime2);
+	vector<vector<float>> xVecValidate = nn->readCSV("../MNIST/validateXnonZero.csv", false, csvTime2);
 	csvTime += csvTime2;
 	vector<vector<float>> yVecValidate = nn->readCSV("../MNIST/validateY.csv", false, csvTime2);
 	csvTime += csvTime2;
-	vector<vector<float>> xVecPredict = nn->readCSV("../MNIST/test.csv", true, csvTime2);
-	csvTime += csvTime2;
+	//vector<vector<float>> xVecPredict = nn->readCSV("../MNIST/test.csv", true, csvTime2);
+	//csvTime += csvTime2;
 	cout << csvTime << " s" << endl;
 
 	// Note for classification setting the layers must be done before setting the data because the dimensions of the y must be known.
-	int layers[4] = {784, 500, 150, 10}; //The bias unit is auto added by the class.
+	int layers[4] = {705, 500, 150, 10}; //The bias unit is auto added by the class.
 	nn->setLayers(layers, 4); //This will random initialise the weights
 	nn->setData(xVec, yVec, true);
 	nn->setValidateData(xVecValidate, yVecValidate, true);
-	nn->setPredictData(xVecPredict);
+	//nn->setPredictData(xVecPredict);
 	nn->normaliseData();
 	nn->normaliseValidateData();
-	nn->normalisePredictData();
-	nn->setIters(2);
+	//nn->normalisePredictData();
+	nn->setIters(5);
 	nn->setDisplay(1);
 	nn->addBiasData();
 	nn->addBiasDataValidate();
-	nn->addBiasDataPredict();
+	//nn->addBiasDataPredict();
 	nn->copyDataGPU();
 
 	/* Arguments for gradient descent:
@@ -112,8 +112,12 @@ int main(int argc, char **argv)
 	 * 2. Learning rate.
 	 * 3. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
 	 */
-	float gpuTime = nn->trainClassifyMomentum(0.0, 0.075, 1);
-	//float gpuTime = nn->trainClassifyQuasiNewton(1);
+	//float gpuTime = nn->trainClassifyMomentum(0.0, 0.075, 1);
+
+	/* This is a training method that uses Quasi-Newton steps for all layers except the last as Quasi-Newton seems to overshoot for the
+	 * last layer.
+	 */
+	float gpuTime = nn->trainClassifyQuasiNewtonMomentum(0.0, 0.075, 1);
 	cout << "GPU Training " << gpuTime << " s" << endl;
 
 	// Not yet implemented

@@ -18,6 +18,7 @@ void vecVecElementDivideGPU(const float* A, const float* B, float* C, const int 
 void absVecGPU(const float* A, float* B, const int M);
 void sigmoidVecGPU(const float* A, float* B, const int M);
 void sigmoidGradVecGPU(const float* A, float* B, const int M);
+void sigmoidGradFromResultVecGPU(const float* A, float* B, const int M);
 void sigmoidGrad2VecGPU(const float* A, float* B, const int M);
 void onesVecGPU(float* A, const int M);
 void probToNumGPU(const float* hProb, float* hNum, const int M, const int N);
@@ -31,6 +32,7 @@ __global__ void kernelVecVecElementDivide(const float* A, const float* B, float*
 __global__ void kernelAbsVec(const float* A, float* B, const int M);
 __global__ void kernelSigmoidVec(const float* A, float* B, const int M);
 __global__ void kernelSigmoidGradVec(const float* A, float* B, const int M);
+__global__ void kernelSigmoidGradFromResultVec(const float* A, float* B, const int M);
 __global__ void kernelSigmoidGrad2Vec(const float* A, float* B, const int M);
 __global__ void kernelOnesVec(float* A, int M);
 __global__ void kernelProbToNum(const float* hProb, float* hNum, const int M, const int N);

@@ -52,6 +52,13 @@ __global__ void kernelSigmoidGradVec(const float* A, float* B, const int M)
 	}
 }
 
+__global__ void kernelSigmoidGradFromResultVec(const float* A, float* B, const int M)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if(i < M)
+		B[i] = A[i] * (1 - A[i]);
+}
+
 __global__ void kernelSigmoidGrad2Vec(const float* A, float* B, const int M)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -130,6 +137,11 @@ void sigmoidVecGPU(const float* A, float* B, const int M)
 void sigmoidGradVecGPU(const float* A, float* B, const int M)
 {
 	kernelSigmoidGradVec<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, B, M);
+}
+
+void sigmoidGradFromResultVecGPU(const float* A, float* B, const int M)
+{
+	kernelSigmoidGradFromResultVec<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, B, M);
 }
 
 void sigmoidGrad2VecGPU(const float* A, float* B, const int M)

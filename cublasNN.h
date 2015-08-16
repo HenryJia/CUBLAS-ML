@@ -44,7 +44,7 @@ public:
 	double trainFuncApproxMomentum(float momentum, float rate, int batchNum = 1);
 	double trainClassifyGradDescent(float rate, int batchNum = 1);
 	double trainClassifyMomentum(float momentum, float rate, int batchNum = 1);
-	double trainClassifyQuasiNewton(int batchNum = 1);
+	double trainClassifyQuasiNewtonMomentum(float momentum, float rate, int batchNum = 1);
 
 private:
 
@@ -71,7 +71,7 @@ private:
 	float* mean(float* data, int a, int b);
 	float* stddev(float* data, float* mean, int a, int b);
 
-	const float one = 1.0f, zero = 0.0f, negOne = -1.0f, mu = 1.0e-5;
+	const float one = 1.0f, zero = 0.0f, negOne = -1.0f, mu = 1.0e-15;
 
 	float lambda;
 	float JValidate;
@@ -153,8 +153,6 @@ private:
 	float* Delta2BaseGPU;
 	int* Delta2Pos;
 	int* Delta2Size;
-
-	float* hessianBaseGPU;
 
 	float* sigGradSq;
 	float* sigGrad2;
