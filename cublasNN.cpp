@@ -669,7 +669,7 @@ double cublasNN::trainClassifyQuasiNewtonMomentum(float momentum, float rate, in
 				free(temp);
 			}*/
 			absVecGPU(Delta2BaseGPU, Delta2BaseGPU, totalThetaSize);
-			//scaVecAddGPU(Delta2BaseGPU, mu, Delta2BaseGPU, totalThetaSize);
+			scaVecAddGPU(Delta2BaseGPU, mu, Delta2BaseGPU, totalThetaSize);
 			vecVecElementDivideGPU(DeltaBaseGPU, Delta2BaseGPU, DeltaBaseGPU, totalThetaSize - DeltaSize[layerNum - 2]);
 			//vecVecSubtractGPU(thetaBaseGPU, step, thetaBaseGPU, totalThetaSize);
 			if((i + 1) % display == 0 && b == 0)

@@ -94,8 +94,8 @@ int main(int argc, char **argv)
 	nn->normaliseData();
 	nn->normaliseValidateData();
 	//nn->normalisePredictData();
-	nn->setIters(5);
-	nn->setDisplay(1);
+	nn->setIters(1000);
+	nn->setDisplay(100);
 	nn->addBiasData();
 	nn->addBiasDataValidate();
 	//nn->addBiasDataPredict();
@@ -112,12 +112,12 @@ int main(int argc, char **argv)
 	 * 2. Learning rate.
 	 * 3. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
 	 */
-	//float gpuTime = nn->trainClassifyMomentum(0.0, 0.075, 1);
+	//float gpuTime = nn->trainClassifyMomentum(0.9, 0.075, 1);
 
 	/* This is a training method that uses Quasi-Newton steps for all layers except the last as Quasi-Newton seems to overshoot for the
 	 * last layer.
 	 */
-	float gpuTime = nn->trainClassifyQuasiNewtonMomentum(0.0, 0.075, 1);
+	float gpuTime = nn->trainClassifyQuasiNewtonMomentum(0.5, 0.075, 1);
 	cout << "GPU Training " << gpuTime << " s" << endl;
 
 	// Not yet implemented
