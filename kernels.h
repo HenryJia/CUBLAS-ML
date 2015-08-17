@@ -1,7 +1,6 @@
 #include <cuda.h>
 
-#define CC 53
-//#define NUM_BLOCKS 32
+#define CC 52
 #define BLOCK_THREADS 64
 #define BLOCK_DIM 16
 

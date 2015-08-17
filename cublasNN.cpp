@@ -506,7 +506,6 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, int batchNu
 {
 	auto start = chrono::steady_clock::now();
 
-	//momentum *= -1; // possible error
 	float* velocity;
 
 	cudaMalloc((void**)&velocity, totalThetaSize * sizeof(float));
@@ -537,6 +536,8 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, int batchNu
 		}
 	}
 
+	cudaFree(velocity);
+
 	releaseGPUVar();
 
 	calcFinalCost(false);
@@ -555,7 +556,6 @@ double cublasNN::trainClassifyMomentum(float momentum, float rate, int batchNum 
 {
 	auto start = chrono::steady_clock::now();
 
-	//momentum *= -1; // possible error
 	float* velocity;
 
 	cudaMalloc((void**)&velocity, totalThetaSize * sizeof(float));
@@ -585,6 +585,8 @@ double cublasNN::trainClassifyMomentum(float momentum, float rate, int batchNum 
 			}
 		}
 	}
+
+	cudaFree(velocity);
 
 	releaseGPUVar();
 
@@ -915,7 +917,8 @@ void cublasNN::validate(bool classify)
 
 	cudaFree(xValGPU);
 	cudaFree(yValGPU);
-	cudaFree(yValBinGPU);
+	if(classify == true)
+		cudaFree(yValBinGPU);
 
 	cudaFree(zBaseGPU);
 	free(zPos);
