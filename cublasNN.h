@@ -44,6 +44,8 @@ public:
 	double trainFuncApproxMomentum(float momentum, float rate, int batchNum = 1);
 	double trainClassifyGradDescent(float rate, int batchNum = 1);
 	double trainClassifyMomentum(float momentum, float rate, int batchNum = 1);
+	void validateFuncApprox() { validate(false); }
+	void validateClassify() { validate(true); }
 
 private:
 	void splitData(int batchNum);
@@ -51,6 +53,7 @@ private:
 	void releaseGPUVar();
 	float gradFuncApprox(int b /*short for batchNum*/);
 	float gradClassify(int b /*short for batchNum*/);
+	void validate(bool classify);
 
 	float* vector2dToMat(vector<vector<float>> data);
 	float* classToBin(float* a, int m);

@@ -77,7 +77,7 @@ __global__ void kernelcountError(float* h, float* y, float* errors, int M)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if(i < M)
-		(h[i] != y[i] && (errors[i] = 1));
+		errors[i] = h[i] != y[i] ? 1.0f : 0.0f;
 }
 
 void scaVecAddGPU(const float* A, const float alpha, float* B, int M)

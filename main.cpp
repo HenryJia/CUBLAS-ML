@@ -61,9 +61,9 @@ int main(int argc, char **argv)
 	cout << "GPU Training " << gpuTime << " s" << endl;*/
 
 	// Not yet implemented
-	/*nn.validate();
+	/*nn->validateFuncApprox();
 	cout << "Write CSV" << endl;
-	cout << nn.predict("result1.csv") << " s" << endl;
+	cout << nn->predict("result1.csv") << " s" << endl;
 	cout << "Finished, press enter to end" << endl;
 	*/
 
@@ -94,8 +94,8 @@ int main(int argc, char **argv)
 	nn->normaliseData();
 	nn->normaliseValidateData();
 	nn->normalisePredictData();
-	nn->setIters(500);
-	nn->setDisplay(50);
+	nn->setIters(100);
+	nn->setDisplay(20);
 	nn->addBiasData();
 	nn->addBiasDataValidate();
 	nn->addBiasDataPredict();
@@ -112,13 +112,15 @@ int main(int argc, char **argv)
 	 * 2. Learning rate.
 	 * 3. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
 	 */
-	float gpuTime = nn->trainClassifyMomentum(0.9, 0.075, 1);
+	float gpuTime = nn->trainClassifyMomentum(0.9, 0.05, 1);
 	cout << "GPU Training " << gpuTime << " s" << endl;
 
+
+	nn->validateClassify();
 	// Not yet implemented
-	/*nn.validate();
+	/*
 	cout << "Write CSV" << endl;
-	cout << nn.predict("result1.csv") << " s" << endl;
+	cout << nn->predict("result1.csv") << " s" << endl;
 	cout << "Finished, press enter to end" << endl;
 	*/
 

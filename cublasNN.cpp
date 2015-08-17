@@ -295,13 +295,13 @@ void cublasNN::setLayers(int* l, int lNum)
 	{
 		int in = l[i] + 1;
 		int out = l[i + 1];
-		float epsilon = (sqrt(6) / sqrt(in + out));
-		float epsilon2 = 2 * epsilon;
-		float negEpsilon = -epsilon;
+		float epsilon = (/*sqrt(6)*/ 1 / sqrt(in/* + out*/));
+		float epsilon2 = /*2 * */ epsilon;
+		//float negEpsilon = -epsilon;
 		float* theta = thetaBaseGPU + thetaPos[i];
 		cublasSscal(handle, thetaSize[i], &epsilon2, theta, 1);
-		scaVecAddGPU(theta, negEpsilon, theta, thetaSize[i]);
-		absVecGPU(theta, theta, thetaSize[i]);
+		//scaVecAddGPU(theta, negEpsilon, theta, thetaSize[i]);
+		//absVecGPU(theta, theta, thetaSize[i]);
 	}
 }
 
@@ -696,7 +696,7 @@ float cublasNN::gradClassify(int b /*short for batchNum*/)
 
 float cublasNN::calcFinalCost(bool classify)
 {
-	float J = 5;
+	float J = 0;
 	int totalzSize = 0;
 	int totalaSize = 0;
 	zPos = (int*)malloc((layerNum - 1) * sizeof(*zPos));
@@ -728,7 +728,7 @@ float cublasNN::calcFinalCost(bool classify)
 
 	cudaMalloc((void**)&zBaseGPU, totalzSize * sizeof(float));
 	cudaMalloc((void**)&aBaseGPU, totalaSize * sizeof(float));
-	cudaMalloc((void**)&deltaBaseGPU, (m * layers[layerNum - 1]) * sizeof(float));
+	cudaMalloc((void**)&JAll, aSize[layerNum - 2] * sizeof(float));
 
 		// Forward Propagate
 	matMatMultiplyGPU(xGPU, (thetaBaseGPU + thetaPos[0]), (zBaseGPU + zPos[0]), m, layers[1], (layers[0] + 1));
@@ -754,10 +754,10 @@ float cublasNN::calcFinalCost(bool classify)
 	}
 	else
 	{
-		vecVecSubtractGPU((aBaseGPU + aPos[layerNum - 2]), yGPU, deltaBaseGPU, aSize[layerNum - 2]);
-		cublasSdot(handle, deltaSize[layerNum - 2], (deltaBaseGPU + deltaPos[layerNum - 2]), 1,
-		           (deltaBaseGPU + deltaPos[layerNum - 2]), 1, &J);
+		vecVecSubtractGPU((aBaseGPU + aPos[layerNum - 2]), yGPU, JAll, aSize[layerNum - 2]);
+		cublasSdot(handle, aSize[layerNum - 2], JAll, 1, JAll, 1, &J);
 		J /= (2 * m);
+		cudaFree(deltaBaseGPU);
 	}
 
 	cout << "Final Cost: " << J << endl;
@@ -767,21 +767,15 @@ float cublasNN::calcFinalCost(bool classify)
 		float* predictNum;
 		float* yNum;
 		float* errors;
-		float* temp;
 		float errorCount;
 		cudaMalloc((void**)&errors, m * sizeof(float));
 		cudaMalloc((void**)&predictNum, m * sizeof(float));
 		cudaMalloc((void**)&yNum, m * sizeof(float));
-		temp = (float*)malloc(m * sizeof(float));
 		probToNumGPU((aBaseGPU + aPos[layerNum - 2]), predictNum, m, layers[layerNum - 1]);
 		probToNumGPU(yGPU, yNum, m, layers[layerNum - 1]);
-		cudaMemcpy(temp, yNum, m * sizeof(float), cudaMemcpyDeviceToHost);
-		for(int i = m - 5; i <  m; i++)
-			cout << temp[i] << endl;
 		countErrorGPU(predictNum, yNum, errors, m);
 		cublasSasum(handle, m, errors, 1, &errorCount);
-		cout << "Error frequency" << '\t' << setprecision(15) << errorCount / m << endl;
-		free(temp);
+		cout << "Total errors " << '\t' << errorCount << endl << "Error frequency" << '\t' << (errorCount / m) << endl;
 		cudaFree(errors);
 		cudaFree(predictNum);
 		cudaFree(yNum);
@@ -795,11 +789,10 @@ float cublasNN::calcFinalCost(bool classify)
 	free(aPos);
 	free(aSize);
 
-	cudaFree(deltaBaseGPU);
+	cudaFree(JAll);
 
 	return J;
 }
-
 
 void cublasNN::releaseGPUVar()
 {
@@ -822,4 +815,115 @@ void cublasNN::releaseGPUVar()
 	cudaFree(DeltaBaseGPU);
 	free(DeltaPos);
 	free(DeltaSize);
+}
+
+void cublasNN::validate(bool classify)
+{
+	float* yValGPU;
+	float* yValBinGPU;
+	float* xValGPU = copyGPU(xValidate, mValidate, (n + 1));
+	if(classify == true)
+	{
+		yValGPU = copyGPU(yValidate, mValidate, 1);
+		float* yValBin = classToBin(yValidate, mValidate);
+		yValBinGPU = copyGPU(yValBin, mValidate, layers[layerNum - 1]);
+		free(yValBin);
+	}
+	else
+		yValGPU = copyGPU(yValidate, mValidate, layers[layerNum - 1]);
+
+	float J = 0;
+	int totalzSize = 0;
+	int totalaSize = 0;
+	zPos = (int*)malloc((layerNum - 1) * sizeof(*zPos));
+	zSize = (int*)malloc((layerNum - 1) * sizeof(*zSize));
+
+
+	zPos[0] = 0;
+	for(int i = 0; i < (layerNum - 2); i++)
+	{
+		zSize[i] = layers[i + 1] * mValidate;
+		totalzSize += zSize[i];
+		zPos[i + 1] = totalzSize;
+	}
+	zSize[layerNum - 2] = layers[layerNum - 1] * mValidate;
+	totalzSize += zSize[layerNum - 2];
+
+	aPos = (int*)malloc((layerNum - 1) * sizeof(*aPos));
+	aSize = (int*)malloc((layerNum - 1) * sizeof(*aSize));
+
+	aPos[0] = 0;
+	for(int i = 0; i < (layerNum - 2); i++)
+	{
+		aSize[i] = (layers[i + 1] + 1) * mValidate;
+		totalaSize += aSize[i];
+		aPos[i + 1] = totalaSize;
+	}
+	aSize[layerNum - 2] = layers[layerNum - 1] * mValidate;
+	totalaSize += aSize[layerNum - 2];
+
+	cudaMalloc((void**)&zBaseGPU, totalzSize * sizeof(float));
+	cudaMalloc((void**)&aBaseGPU, totalaSize * sizeof(float));
+	cudaMalloc((void**)&JAll, aSize[layerNum - 2] * sizeof(float));
+
+	// Forward Propagate
+	matMatMultiplyGPU(xValGPU, (thetaBaseGPU + thetaPos[0]), (zBaseGPU + zPos[0]), mValidate, layers[1], (layers[0] + 1));
+	sigmoidVecGPU((zBaseGPU + zPos[0]), (aBaseGPU + aPos[0] + mValidate), zSize[0]);
+	for(int j = 1; j < layerNum - 2; j++)
+	{
+		addBiasMatGPU((aBaseGPU + aPos[j - 1]), mValidate);
+		matMatMultiplyGPU((aBaseGPU + aPos[j - 1]), (thetaBaseGPU + thetaPos[j]), (zBaseGPU + zPos[j]),
+		                  mValidate, layers[j + 1], (layers[j] + 1));
+		sigmoidVecGPU((zBaseGPU + zPos[j]), (aBaseGPU + aPos[j] + mValidate), zSize[j]);
+	}
+	addBiasMatGPU((aBaseGPU + aPos[layerNum - 3]), mValidate);
+	matMatMultiplyGPU((aBaseGPU + aPos[layerNum - 3]), (thetaBaseGPU + thetaPos[layerNum - 2]),
+	                  (zBaseGPU + zPos[layerNum - 2]), mValidate, layers[layerNum - 1], (layers[layerNum - 2] + 1));
+
+	// Calculate the last delta
+	if(classify == true)
+	{
+		sigmoidVecGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
+		negLnMaxCostGPU((aBaseGPU + aPos[layerNum - 2]), yValBinGPU, JAll, aSize[layerNum - 2]);
+		cublasSasum(handle, aSize[layerNum - 2], JAll, 1, &J);
+		J /= mValidate;
+	}
+	else
+	{
+		vecVecSubtractGPU((aBaseGPU + aPos[layerNum - 2]), yValGPU, JAll, aSize[layerNum - 2]);
+		cublasSdot(handle, aSize[layerNum - 2], JAll, 1, JAll, 1, &J);
+		J /= (2 * mValidate);
+	}
+
+	cout << "Final Validation Cost: " << J << endl;
+
+	if(classify == true)
+	{
+		float* predictNum;
+		float* errors;
+		float errorCount;
+		cudaMalloc((void**)&errors, mValidate * sizeof(float));
+		cudaMalloc((void**)&predictNum, mValidate * sizeof(float));
+		probToNumGPU((aBaseGPU + aPos[layerNum - 2]), predictNum, mValidate, layers[layerNum - 1]);
+		countErrorGPU(predictNum, yValGPU, errors, mValidate);
+		cublasSasum(handle, mValidate, errors, 1, &errorCount);
+		cout << "Total validation errors " << '\t' << errorCount << endl;
+		cout << "Validation error frequency" << '\t' << (errorCount / mValidate) << endl;
+		cudaFree(errors);
+		cudaFree(predictNum);
+	}
+
+	cudaFree(xValGPU);
+	cudaFree(yValGPU);
+	cudaFree(yValBinGPU);
+
+	cudaFree(zBaseGPU);
+	free(zPos);
+	free(zSize);
+
+	cudaFree(aBaseGPU);
+	free(aPos);
+	free(aSize);
+
+	cudaFree(JAll);
 }
