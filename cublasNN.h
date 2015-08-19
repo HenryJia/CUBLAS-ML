@@ -51,9 +51,9 @@ private:
 	void splitData(int batchNum);
 	float calcFinalCost(bool classify);
 	void releaseGPUVar();
-	float gradFuncApprox(int b /*short for batchNum*/);
-	float gradClassify(int b /*short for batchNum*/);
 	void validate(bool classify);
+	void forwardPropagate(float* X, int size); //Does not activate the last layer. That can be done by the caller of this function.
+	void backwardPropagate(float *output, int b  /*short for batchNum*/);
 
 	float* vector2dToMat(vector<vector<float>> data);
 	float* classToBin(float* a, int m);
@@ -62,11 +62,11 @@ private:
 	float writeCSV(string fileName, float* data);
 
 	// CPU Linear Algebra Functions
+	float* addBias(float* data, int a, int b);
 	float* mean(float* data, int a, int b);
 	float* stddev(float* data, float* mean, int a, int b);
 
 	// GPU Linear Algebra Functions
-	float* addBias(float* data, int a, int b);
 	void allocVarGPU(int batchNum);
 	void matMatMultiplyGPU(const float *A, const float *B, float *C, const int a, const int b, const int c,
 	                       cublasOperation_t transa, cublasOperation_t transb, int lda, int ldb, int ldc);
