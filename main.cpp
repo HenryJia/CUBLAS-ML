@@ -61,9 +61,10 @@ int main(int argc, char **argv)
 	cout << "GPU Training " << gpuTime << " s" << endl;*/
 
 	// Not yet implemented
-	/*nn->validateFuncApprox();
+	/*
 	cout << "Write CSV" << endl;
-	cout << nn->predict("result1.csv") << " s" << endl;
+	vector<vector<float>> result = nn->predictFuncApprox();
+	cout << nn->writeCSV(result, "result.csv") << " s" << endl;
 	cout << "Finished, press enter to end" << endl;
 	*/
 
@@ -86,7 +87,7 @@ int main(int argc, char **argv)
 	cout << csvTime << " s" << endl;
 
 	// Note for classification setting the layers must be done before setting the data because the dimensions of the y must be known.
-	int layers[4] = {784, 500, 150, 10}; //The bias unit is auto added by the class.
+	int layers[4] = {784, 500, 300, 10}; //The bias unit is auto added by the class.
 	nn->setLayers(layers, 4); //This will random initialise the weights
 	nn->setData(xVec, yVec, true);
 	nn->setValidateData(xVecValidate, yVecValidate, true);
@@ -94,8 +95,8 @@ int main(int argc, char **argv)
 	nn->normaliseData();
 	nn->normaliseValidateData();
 	nn->normalisePredictData();
-	nn->setIters(200);
-	nn->setDisplay(20);
+	nn->setIters(2000);
+	nn->setDisplay(500);
 	nn->addBiasData();
 	nn->addBiasDataValidate();
 	nn->addBiasDataPredict();
@@ -115,14 +116,12 @@ int main(int argc, char **argv)
 	float gpuTime = nn->trainClassifyMomentum(0.9, 0.075, 1);
 	cout << "GPU Training " << gpuTime << " s" << endl;
 
-
 	nn->validateClassify();
-	// Not yet implemented
-	/*
+
 	cout << "Write CSV" << endl;
-	cout << nn->predict("result1.csv") << " s" << endl;
+	vector<vector<float>> result = nn->predictClassify();
+	cout << nn->writeCSV(result, "result.csv") << " s" << endl;
 	cout << "Finished, press enter to end" << endl;
-	*/
 
 	getchar();
 	delete nn;

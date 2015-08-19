@@ -26,6 +26,7 @@ public:
 	~cublasNN();
 
 	vector<vector<float>> readCSV(string fileName, bool header, float &time);
+	double writeCSV(vector<vector<float>> data, string filename);
 	void setData(vector<vector<float>> xVec, vector<vector<float>> yVec, bool classify);
 	void setValidateData(vector<vector<float>> xVec, vector<vector<float>> yVec, bool classify);
 	void setPredictData(vector<vector<float>> xVec);
@@ -33,12 +34,12 @@ public:
 	void setIters(int i) { iters = i; }
 	void setDisplay(int i) { display = i; }
 	void setLambda(int l) { lambda = l; }
-	void normaliseData() { normalise(x, m, n); }
-	void normaliseValidateData() { normalise(xValidate, mValidate, nValidate); }
-	void normalisePredictData() { normalise(xPredict, mValidate, nValidate); }
+	void normaliseData();
+	void normaliseValidateData() { normalise(xValidate, mValidate, n); }
+	void normalisePredictData() { normalise(xPredict, mValidate, n); }
 	void addBiasData() { float* temp = addBias(x, m, n); free(x); x = temp; }
-	void addBiasDataValidate() { float* temp = addBias(xValidate, mValidate, nValidate); free(xValidate); xValidate = temp; }
-	void addBiasDataPredict() { float* temp = addBias(xPredict, mPredict, nPredict); free(xPredict); xPredict = temp; }
+	void addBiasDataValidate() { float* temp = addBias(xValidate, mValidate, n); free(xValidate); xValidate = temp; }
+	void addBiasDataPredict() { float* temp = addBias(xPredict, mPredict, n); free(xPredict); xPredict = temp; }
 	void copyDataGPU();
 	double trainFuncApproxGradDescent(float rate, int batchNum = 1);
 	double trainFuncApproxMomentum(float momentum, float rate, int batchNum = 1);
@@ -46,19 +47,23 @@ public:
 	double trainClassifyMomentum(float momentum, float rate, int batchNum = 1);
 	void validateFuncApprox() { validate(false); }
 	void validateClassify() { validate(true); }
+	vector<vector<float>> predictFuncApprox() { return predict(false); }
+	vector<vector<float>> predictClassify()  { return predict(true); }
 
 private:
 	void splitData(int batchNum);
 	float calcFinalCost(bool classify);
 	void releaseGPUVar();
-	void validate(bool classify);
 	void forwardPropagate(float* X, int size); //Does not activate the last layer. That can be done by the caller of this function.
 	void backwardPropagate(float *output, int b  /*short for batchNum*/);
+	void validate(bool classify);
+	vector<vector<float>> predict(bool classify);
 
 	float* vector2dToMat(vector<vector<float>> data);
 	float* classToBin(float* a, int m);
 	void normalise(float* data, int a, int b);
-	float* copyGPU(float* data, int a, int b);
+	float* copyToGPU(float* data, int a, int b);
+	float* copyFromGPU(float* dataGPU, int a, int b);
 	float writeCSV(string fileName, float* data);
 
 	// CPU Linear Algebra Functions
@@ -77,6 +82,9 @@ private:
 	int iters;
 	int display;
 	int layerNum;
+
+	float* Mean;
+	float* Stddev;
 
 	float* x;
 	float* xValidate;
@@ -116,8 +124,6 @@ private:
 	int mPredict;
 
 	int n; // Does not include the bias term
-	int nValidate;
-	int nPredict;
 
 	// Will need to free the pointers below
 	float* zBaseGPU;
