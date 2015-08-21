@@ -50,7 +50,7 @@ int main(int argc, char **argv)
 	 * 1. Learning rate
 	 * 2. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
 	 */
-	//float concurrentTime = nn->trainFuncApproxGradDescent(0.0025, 4);
+	//float gpuTime = nn->trainFuncApproxGradDescent(0.0025, 4);
 
 	/* Arguments for momentum:
 	 * 1. Momentum/viscosity.
@@ -106,7 +106,7 @@ int main(int argc, char **argv)
 	 * 1. Learning rate
 	 * 2. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
 	 */
-	//float concurrentTime = nn->trainFuncApproxGradDescent(0.0025, 4);
+	//float gpuTime = nn->trainFuncApproxGradDescent(0.0025, 4);
 
 	/* Arguments for momentum:
 	 * 1. Momentum/viscosity.
