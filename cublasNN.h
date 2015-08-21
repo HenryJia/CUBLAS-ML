@@ -14,7 +14,7 @@
 #include <stdlib.h>
 
 #ifndef IDX2CS
-#define IDX2C(i,j,ld) (((j)*(ld))+(i)) // i is column, j is row, ld is total number of columns
+#define IDX2C(i,j,ld) (j * ld + i) // i is column, j is row, ld is total number of columns
 #endif
 
 using namespace std;

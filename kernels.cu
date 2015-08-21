@@ -28,20 +28,42 @@ __global__ void kernelAbsVec(const float* A, float* B, int M)
 		B[i] = abs(A[i]);
 }
 
-__global__ void kernelSigmoidVec(const float* A, float* B, int M)
+__global__ void kernelSigmoid(const float* A, float* B, int M)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if(i < M)
 		B[i] = 1 / (1 + exp(-A[i]));
 }
 
-__global__ void kernelSigmoidGradVec(const float* A, float* B, int M)
+__global__ void kernelSigmoidGrad(const float* A, float* B, int M)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if(i < M)
 	{
-		float temp = 1 / (1 + exp(-A[i]));
-		B[i] = temp * (1 - temp);
+		float a = 1 / (1 + exp(-A[i]));
+		B[i] = a * (1 - a);
+	}
+}
+
+__global__ void kernelSoftmax(const float* A, float* B, int M, int N)
+{
+	// The idiot-proof un-optimised algorithm
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if(i < M)
+	{
+		float total = 0;
+		//extern __shared__ float e[];
+		/*for(int j = 0; j < N; j++)
+		{
+			e[IDX2C(i, j, BLOCK_THREADS)] = exp(A[IDX2C(i, j, M)]);
+			total += e[IDX2C(i, j, BLOCK_THREADS)];
+		}
+		for(int j = 0; j < N; j++)
+			B[IDX2C(i, j, M)] = e[IDX2C(i, j, BLOCK_THREADS)] / total;*/
+		for(int j = 0; j < N; j++)
+			total += exp(A[IDX2C(i, j, M)]);
+		for(int j = 0; j < N; j++)
+			B[IDX2C(i, j, M)] = exp(A[IDX2C(i, j, M)]) / total;
 	}
 }
 
@@ -73,6 +95,13 @@ __global__ void kernelNegLnMaxCost(float* h, float* y, float *J, int M)
 		J[i] = -y[i] * log(h[i]) - (1 - y[i]) * log(1 - h[i]);
 }
 
+__global__ void kernelCrossEntropyCost(float* h, float* y, float *J, int M)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if(i < M)
+		J[i] = -y[i] * log(h[i]);
+}
+
 __global__ void kernelcountError(float* h, float* y, float* errors, int M)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -100,14 +129,19 @@ void absVecGPU(const float* A, float* B, int M)
 	kernelAbsVec<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, B, M);
 }
 
-void sigmoidVecGPU(const float* A, float* B, int M)
+void sigmoidGPU(const float* A, float* B, int M)
 {
-	kernelSigmoidVec<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, B, M);
+	kernelSigmoid<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, B, M);
 }
 
-void sigmoidGradVecGPU(const float* A, float* B, int M)
+void sigmoidGradGPU(const float* A, float* B, int M)
 {
-	kernelSigmoidGradVec<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, B, M);
+	kernelSigmoidGrad<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(A, B, M);
+}
+
+void softmaxGPU(const float* A, float* B, int M, int N)
+{
+	kernelSoftmax<<<NUM_BLOCKS(M), BLOCK_THREADS, BLOCK_THREADS * N * sizeof(float)>>>(A, B, M, N);
 }
 
 void addBiasMatGPU(float* A, int M)
@@ -123,6 +157,11 @@ void probToNumGPU(float* hProb, float* hNum, int M, int N)
 void negLnMaxCostGPU(float* h, float* y, float *J, int M)
 {
 	kernelNegLnMaxCost<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(h, y, J, M);
+}
+
+void crossEntropyCostGPU(float* h, float* y, float *J, int M)
+{
+	kernelCrossEntropyCost<<<NUM_BLOCKS(M), BLOCK_THREADS>>>(h, y, J, M);
 }
 
 void countErrorGPU(float* h, float* y, float* errors, int M)
