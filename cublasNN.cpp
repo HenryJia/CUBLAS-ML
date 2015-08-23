@@ -596,7 +596,7 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, int batchNu
 
 double cublasNN::trainClassifyGradDescent(float rate, int batchNum /*= 1*/)
 {
-	return trainFuncApproxMomentum(0, rate, batchNum);
+	return trainClassifyMomentum(0, rate, batchNum);
 }
 
 double cublasNN::trainClassifyMomentum(float momentum, float rate, int batchNum /*= 1*/)
