@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <iostream>
 
-#include "cublasNN.h"
+#include "cublasNN.hpp"
+#include "activations.h"
+#include "costfunctions.h"
+#include "randinitweights.h"
 
 int main(int argc, char **argv)
 {
@@ -46,14 +49,8 @@ int main(int argc, char **argv)
 	nn->addBiasDataPredict();
 	nn->copyDataGPU();
 
-	/* Arguments for gradient descent:
-	 * 1. Learning rate
-	 * 2. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
-	 */
-	//float gpuTime = nn->trainFuncApproxGradDescent(0.0025, 4);
-
 	/* Arguments for momentum:
-	 * 1. Momentum/viscosity.
+	 * 1. Momentum/viscosity. Set this to 0 for normal gradient descent
 	 * 2. Learning rate.
 	 * 3. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
 	 */
@@ -87,36 +84,36 @@ int main(int argc, char **argv)
 	cout << csvTime << " s" << endl;
 
 	// Note for classification setting the layers must be done before setting the data because the dimensions of the y must be known.
-	int layers[4] = {784, 500, 150, 10}; //The bias unit is auto added by the class.
+	int layers[4] = {784, 500, 300, 10}; //The bias unit is auto added by the class.
 	nn->setLayers(layers, 4); //This will random initialise the weights
+	nn->randInitWeights(randInitWeights2GPU);
 	nn->setData(xVec, yVec, true);
 	nn->setValidateData(xVecValidate, yVecValidate, true);
 	nn->setPredictData(xVecPredict);
-	nn->normaliseData();
-	nn->normaliseValidateData();
-	nn->normalisePredictData();
-	nn->setIters(5000);
+	//nn->normaliseData();
+	//nn->normaliseValidateData();
+	//nn->normalisePredictData();
+	nn->setIters(1000);
 	nn->setDisplay(1);
 	nn->addBiasData();
 	nn->addBiasDataValidate();
 	nn->addBiasDataPredict();
 	nn->copyDataGPU();
 
-	/* Arguments for gradient descent:
-	 * 1. Learning rate
-	 * 2. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
-	 */
-	//float gpuTime = nn->trainClassifyGradDescent(0.1, 5);
-
 	/* Arguments for momentum:
-	 * 1. Momentum/viscosity.
+	 * 1. Momentum/viscosity. Set this to 0 for normal gradient descent
 	 * 2. Learning rate.
-	 * 3. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
+	 * 3. Activation function of the hidden layers. See activations.h and activations.cu for the examples.
+	 * 4. Derivative of the activation function of the hidden layers See activations.h and activations.cu for the examples.
+	 * 5. Activation function of the output layers. See activations.h and activations.cu for the examples.
+	 * 6. The cost function. See costfunctions.h. and costfunctions.cu for the examples.
+	 * 7. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
 	 */
-	float gpuTime = nn->trainClassifyMomentum(0.9, 0.1, 1);
+	float gpuTime = nn->trainClassifyMomentum(0.9, 0.05, sigmoidGPU, sigmoidGradGPU, sigmoidOutputGPU, negLnMaxCostGPU, 20);
 	cout << "GPU Training " << gpuTime << " s" << endl;
 
-	nn->validateClassify();
+	//nn->validateClassify(tanhGPU, softmaxGPU, crossEntropyCostGPU);
+	nn->validateClassify(sigmoidGPU, sigmoidOutputGPU, negLnMaxCostGPU);
 
 	/*cout << "Write CSV" << endl;
 	vector<vector<float>> result = nn->predictClassify();
