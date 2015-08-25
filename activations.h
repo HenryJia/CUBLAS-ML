@@ -2,6 +2,7 @@
 #define ACTIVATIONS_H
 
 #include <cuda.h>
+
 #include "cudadefs.h"
 
 void sigmoidGPU(const float* A, float* B, int M);

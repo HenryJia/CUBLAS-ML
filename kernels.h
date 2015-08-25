@@ -2,6 +2,7 @@
 #define KERNELS_H
 
 #include <cuda.h>
+
 #include "cudadefs.h"
 
 void scaVecAddGPU(const float* A, const float alpha, float* B, int M);

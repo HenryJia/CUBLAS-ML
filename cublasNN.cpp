@@ -267,7 +267,7 @@ float* cublasNN::stddev(float* data, float* mean, int a, int b)
 	return result;
 }
 
-void cublasNN::setLayers(int* l, int lNum, void (*randInitWeights)(float* theta, int in, int out, int M))
+void cublasNN::setLayers(int* l, int lNum, void (*randInitWeights)(float*, int, int, int))
 {
 	layerNum = lNum;
 	layers = (int*)malloc(layerNum * sizeof(*layers));
@@ -521,21 +521,6 @@ void cublasNN::splitData(int batchNum)
 
 	cudaFree(xTransGPU);
 	cudaFree(yTransGPU);
-}
-
-// Wrapper for cublasSgemm to make life easier C(m,n) = A(m,k) * B(k,n)
-inline void cublasNN::matMatMultiplyGPU(const float *A, const float *B, float *C, const int a, const int b, const int c,
-                                 cublasOperation_t transa = CUBLAS_OP_N, cublasOperation_t transb = CUBLAS_OP_N,
-                                 int lda = -1, int ldb = -1, int ldc = -1)
-{
-	const float alpha = 1, beta = 0;
-	//int lda = m, int ldb = k, int ldc = m
-	(lda < 0 && (lda = a));
-	(ldb < 0 && (ldb = c));
-	(ldc < 0 && (ldc = a));
-
-	// Do the actual multiplication
-	cublasSgemm(handle, transa, transb, a, b, c, &alpha, A, lda, B, ldb, &beta, C, ldc);
 }
 
 double cublasNN::trainFuncApproxMomentum(float momentum, float rate, void (*activationHidden)(const float*, float*, int),

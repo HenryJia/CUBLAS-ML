@@ -2,6 +2,7 @@
 #define COSTFUNCTIONS_H
 
 #include <cuda.h>
+
 #include "cudadefs.h"
 
 void negLnMaxCostGPU(float* h, float* y, float *J, int M);

@@ -2,6 +2,7 @@
 #define RANDINITWEIGHTS_H
 
 #include "cudadefs.h"
+
 #include "cuda.h"
 
 void randInitWeights1GPU(float* theta, int in, int out, int M);
