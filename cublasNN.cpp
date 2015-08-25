@@ -538,12 +538,8 @@ inline void cublasNN::matMatMultiplyGPU(const float *A, const float *B, float *C
 	cublasSgemm(handle, transa, transb, a, b, c, &alpha, A, lda, B, ldb, &beta, C, ldc);
 }
 
-double cublasNN::trainFuncApproxGradDescent(float rate, int batchNum /*= 1*/)
-{
-	return trainFuncApproxMomentum(0, rate, batchNum);
-}
-
-double cublasNN::trainFuncApproxMomentum(float momentum, float rate, int batchNum /*= 1*/)
+double cublasNN::trainFuncApproxMomentum(float momentum, float rate, void (*activationHidden)(const float*, float*, int),
+                                         void (*activationDerivative)(const float*, float*, int), int batchNum /*= 1*/)
 {
 	auto start = chrono::steady_clock::now();
 
@@ -563,8 +559,8 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, int batchNu
 			float alpha = -rate / mBatch[b];
 			float J = 0;
 
-			forwardPropagate((xSplitGPU + xPosBatch[b]), sigmoidGPU, mBatch[b]);
-			backwardPropagate((zBaseGPU + zPos[layerNum - 2]), sigmoidGradGPU, b);
+			forwardPropagate((xSplitGPU + xPosBatch[b]), activationHidden, mBatch[b]);
+			backwardPropagate((zBaseGPU + zPos[layerNum - 2]), activationDerivative, b);
 
 			if((i + 1) % display == 0 && b == 0)
 			{
@@ -597,12 +593,8 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, int batchNu
 	return chrono::duration <double> (elapsed).count();
 }
 
-double cublasNN::trainClassifyGradDescent(float rate, int batchNum /*= 1*/)
-{
-	return trainClassifyMomentum(0, rate, batchNum);
-}
-
-double cublasNN::trainClassifyMomentum(float momentum, float rate, int batchNum /*= 1*/)
+double cublasNN::trainClassifyMomentum(float momentum, float rate, void (*activationHidden)(const float*, float*, int),
+                                       void (*activationDerivative)(const float*, float*, int), int batchNum /*= 1*/)
 {
 	auto start = chrono::steady_clock::now();
 
@@ -622,9 +614,9 @@ double cublasNN::trainClassifyMomentum(float momentum, float rate, int batchNum 
 			float alpha = -rate / mBatch[b];
 			float J = 0;
 
-			forwardPropagate((xSplitGPU + xPosBatch[b]), sigmoidGPU, mBatch[b]);
+			forwardPropagate((xSplitGPU + xPosBatch[b]), activationHidden, mBatch[b]);
 			sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
-			backwardPropagate((aBaseGPU + aPos[layerNum - 2]), sigmoidGradGPU, b);
+			backwardPropagate((aBaseGPU + aPos[layerNum - 2]), activationDerivative, b);
 
 			// Calculate cost
 			if((i + 1) % display == 0 && b == 0)
