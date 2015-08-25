@@ -918,7 +918,8 @@ void cublasNN::releaseGPUVar()
 	free(DeltaSize);
 }
 
-vector<vector<float>> cublasNN::predict(bool classify)
+vector<vector<float>> cublasNN::predict(bool classify, void (*activationHidden)(const float*, float*, int),
+                                        void (*activationOutput)(const float*, float*, int, int))
 {
 	float* xPreGPU = copyToGPU(xPredict, mPredict, (n + 1));
 	float* result;
@@ -955,10 +956,11 @@ vector<vector<float>> cublasNN::predict(bool classify)
 	cudaMalloc((void**)&zBaseGPU, totalzSize * sizeof(float));
 	cudaMalloc((void**)&aBaseGPU, totalaSize * sizeof(float));
 
-	forwardPropagate(xPreGPU, sigmoidGPU, mPredict);
+	forwardPropagate(xPreGPU, activationHidden, mPredict);
 	if(classify == true)
 	{
-		sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
+		//sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
+		activationOutput((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), mPredict, layers[layerNum - 1]);
 		float* predictNum;
 		cudaMalloc((void**)&predictNum, mPredict * sizeof(float));
 		probToNumGPU((aBaseGPU + aPos[layerNum - 2]), predictNum, mPredict, layers[layerNum - 1]);

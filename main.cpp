@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 	nn->normaliseData();
 	nn->normaliseValidateData();
 	nn->normalisePredictData();
-	nn->setIters(200);
+	nn->setIters(3000);
 	nn->setDisplay(1);
 	nn->addBiasData();
 	nn->addBiasDataValidate();
@@ -116,13 +116,13 @@ int main(int argc, char **argv)
 	 * 2. Learning rate.
 	 * 3. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
 	 */
-	float gpuTime = nn->trainClassifyMomentum(0.9, 0.05, sigmoidGPU, sigmoidGradGPU, sigmoidOutputGPU, negLnMaxCostGPU, 1);
+	float gpuTime = nn->trainClassifyMomentum(0.9, 0.075, sigmoidGPU, sigmoidGradGPU, sigmoidOutputGPU, negLnMaxCostGPU, 1);
 	cout << "GPU Training " << gpuTime << " s" << endl;
 
 	nn->validateClassify(sigmoidGPU, sigmoidOutputGPU, negLnMaxCostGPU);
 
 	cout << "Write CSV" << endl;
-	vector<vector<float>> result = nn->predictClassify();
+	vector<vector<float>> result = nn->predictClassify(sigmoidGPU, sigmoidOutputGPU);
 	cout << nn->writeCSV(result, "result.csv") << " s" << endl;
 	cout << "Finished, press enter to end" << endl;
 

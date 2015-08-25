@@ -57,13 +57,14 @@ public:
 	{
 		validate(true, activationHidden, activationOutput, costFunction);
 	}
-	vector<vector<float>> predictFuncApprox()
+	vector<vector<float>> predictFuncApprox(void (*activationHidden)(const float*, float*, int))
 	{
-		return predict(false);
+		return predict(false, activationHidden, NULL);
 	}
-	vector<vector<float>> predictClassify()
+	vector<vector<float>> predictClassify(void (*activationHidden)(const float*, float*, int),
+	                                      void (*activationOutput)(const float*, float*, int, int))
 	{
-		return predict(true);
+		return predict(true, activationHidden, activationOutput);
 	}
 
 private:
@@ -77,7 +78,8 @@ private:
 	void validate(bool classify, void (*activationHidden)(const float*, float*, int),
 	              void (*activationOutput)(const float*, float*, int, int),
 	              void (*costFunction)(float*, float*, float*, int));
-	vector<vector<float>> predict(bool classify);
+	vector<vector<float>> predict(bool classify, void (*activationHidden)(const float*, float*, int),
+	                              void (*activationOutput)(const float*, float*, int, int));
 
 	float* vector2dToMat(vector<vector<float>> data);
 	float* classToBin(float* a, int m);
@@ -91,7 +93,6 @@ private:
 	float* mean(float* data, int a, int b);
 	float* stddev(float* data, float* mean, int a, int b);
 
-	// GPU Linear Algebra Functions
 	void allocVarGPU(int batchNum);
 	void matMatMultiplyGPU(const float *A, const float *B, float *C, const int a, const int b, const int c,
 	                       cublasOperation_t transa, cublasOperation_t transb, int lda, int ldb, int ldc);
