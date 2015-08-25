@@ -87,14 +87,14 @@ int main(int argc, char **argv)
 
 	// Note for classification setting the layers must be done before setting the data because the dimensions of the y must be known.
 	int layers[4] = {784, 500, 300, 10}; //The bias unit is auto added by the class.
-	nn->setLayers(layers, 4, randInitWeights1GPU); //This will random initialise the weights
+	nn->setLayers(layers, 4, randInitWeights2GPU); //This will random initialise the weights
 	nn->setData(xVec, yVec, true);
 	nn->setValidateData(xVecValidate, yVecValidate, true);
 	nn->setPredictData(xVecPredict);
 	nn->normaliseData();
 	nn->normaliseValidateData();
 	nn->normalisePredictData();
-	nn->setIters(3000);
+	nn->setIters(500);
 	nn->setDisplay(1);
 	nn->addBiasData();
 	nn->addBiasDataValidate();
@@ -110,13 +110,16 @@ int main(int argc, char **argv)
 	 * 6. Cost function. See costfunctions.cu for example. You can write your own and add it to costfunctions.h/.cu
 	 * 7. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
 	 */
-	float gpuTime = nn->trainClassifyMomentum(0.9, 0.075, sigmoidGPU, sigmoidGradGPU, sigmoidOutputGPU, negLnMaxCostGPU, 1);
+	//float gpuTime = nn->trainClassifyMomentum(0.9, 0.075, sigmoidGPU, sigmoidGradGPU, sigmoidOutputGPU, negLnMaxCostGPU, 1);
+	float gpuTime = nn->trainClassifyMomentum(0.9, 0.075, tanhGPU, sechSqGPU, softmaxGPU, crossEntropyCostGPU, 1);
 	cout << "GPU Training " << gpuTime << " s" << endl;
 
-	nn->validateClassify(sigmoidGPU, sigmoidOutputGPU, negLnMaxCostGPU);
+	//nn->validateClassify(sigmoidGPU, sigmoidOutputGPU, negLnMaxCostGPU);
+	nn->validateClassify(tanhGPU, softmaxGPU, crossEntropyCostGPU);
 
 	cout << "Write CSV" << endl;
-	vector<vector<float>> result = nn->predictClassify(sigmoidGPU, sigmoidOutputGPU);
+	//vector<vector<float>> result = nn->predictClassify(sigmoidGPU, sigmoidOutputGPU);
+	vector<vector<float>> result = nn->predictClassify(tanhGPU, softmaxGPU);
 	cout << nn->writeCSV(result, "result.csv") << " s" << endl;
 	cout << "Finished, press enter to end" << endl;
 
