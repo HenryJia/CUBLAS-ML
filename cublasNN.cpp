@@ -564,7 +564,7 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, int batchNu
 			float J = 0;
 
 			forwardPropagate((xSplitGPU + xPosBatch[b]), sigmoidGPU, mBatch[b]);
-			backwardPropagate((zBaseGPU + zPos[layerNum - 2]), b);
+			backwardPropagate((zBaseGPU + zPos[layerNum - 2]), sigmoidGradGPU, b);
 
 			if((i + 1) % display == 0 && b == 0)
 			{
@@ -624,7 +624,7 @@ double cublasNN::trainClassifyMomentum(float momentum, float rate, int batchNum 
 
 			forwardPropagate((xSplitGPU + xPosBatch[b]), sigmoidGPU, mBatch[b]);
 			sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
-			backwardPropagate((aBaseGPU + aPos[layerNum - 2]), b);
+			backwardPropagate((aBaseGPU + aPos[layerNum - 2]), sigmoidGradGPU, b);
 
 			// Calculate cost
 			if((i + 1) % display == 0 && b == 0)
@@ -679,7 +679,7 @@ inline void cublasNN::forwardPropagate(float* X, void (*activationHidden)(const 
 	//sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
 }
 
-inline void cublasNN::backwardPropagate(float *output, int b  /*short for batchNum*/)
+inline void cublasNN::backwardPropagate(float *output, void (*activationDerivative)(const float*, float*, int), int b  /*short for batchNum*/)
 {
 	// Calculate the last delta
 	vecVecSubtractGPU(output, ySplitGPU + yPosBatch[b], (deltaBaseGPU + deltaPos[layerNum - 2]),
@@ -688,7 +688,8 @@ inline void cublasNN::backwardPropagate(float *output, int b  /*short for batchN
 	// Calculate remaining deltas via backpropagation
 	for(int j = layerNum - 3; j >= 0; j--)
 	{
-		sigmoidGradGPU((zBaseGPU + zPos[j]), sigGrad, zSize[j]);
+		//sigmoidGradGPU((zBaseGPU + zPos[j]), sigGrad, zSize[j]);
+		activationDerivative((zBaseGPU + zPos[j]), sigGrad, zSize[j]);
 		matMatMultiplyGPU((deltaBaseGPU + deltaPos[j + 1]), (thetaBaseGPU + thetaPos[j + 1]), product, mBatch[b],(layers[j + 1] + 1),
 		                  layers[j + 2], CUBLAS_OP_N, CUBLAS_OP_T, mBatch[b], (layers[j + 1] + 1), mBatch[b]);
 		vecVecElementMultiplyGPU((product + mBatch[b]), sigGrad, (deltaBaseGPU + deltaPos[j]), deltaSize[j]);
