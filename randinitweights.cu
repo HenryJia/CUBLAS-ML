@@ -15,7 +15,7 @@ __global__ void kernelRandInitWeights1(float* theta, int in, int out, int M)
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if(i < M)
 	{
-		epsilon =  (1 / sqrt((float)in));
+		float epsilon =  (1 / sqrt((float)in));
 		theta[i] = theta[i] * 2 * epsilon - epsilon; // The means that the weights are initialised between [-epsilon, +ve epsilon]
 	}
 }

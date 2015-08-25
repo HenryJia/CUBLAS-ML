@@ -1,8 +1,7 @@
-#include "cublasNN.h"
+#include "cublasNN.hpp"
 #include "kernels.h"
 #include "activations.h"
 #include "costfunctions.h"
-#include "randinitweights.h"
 
 #include <math.h>
 #include <chrono>
@@ -311,21 +310,6 @@ void cublasNN::setLayers(int* l, int lNum)
 		return;
 	}
 	thetaBaseGPUOld = true;
-
-	curandGenerateUniform(gen, thetaBaseGPU, totalThetaSize);
-	for(int i = 0; i < (layerNum - 1); i++)
-	{
-		int in = l[i] + 1;
-		int out = l[i + 1];
-		//float epsilon = (/*sqrt(6)*/ 1 / sqrt(in/* + out*/));
-		//float epsilon2 = /*2 * */ epsilon;
-		//float negEpsilon = -epsilon;
-		//float* theta = thetaBaseGPU + thetaPos[i];
-		//cublasSscal(handle, thetaSize[i], &epsilon2, theta, 1);
-		//scaVecAddGPU(theta, negEpsilon, theta, thetaSize[i]);
-		//absVecGPU(theta, theta, thetaSize[i]);
-		randInitWeights2GPU((thetaBaseGPU + thetaPos[i]), in, out, thetaSize[i]);
-	}
 }
 
 float* cublasNN::addBias(float* data, int a, int b)
@@ -627,7 +611,7 @@ double cublasNN::trainClassifyMomentum(float momentum, float rate, int batchNum 
 			sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
 			backwardPropagate((aBaseGPU + aPos[layerNum - 2]), b);
 
-			float* temp = (float*)malloc(zSize[0] * sizeof(float));
+			/*float* temp = (float*)malloc(zSize[0] * sizeof(float));
 			cudaMemcpy(temp, (zBaseGPU + zPos[0]), zSize[0] * sizeof(float), cudaMemcpyDeviceToHost);
 			for(int j = 0; j < 5; j++)
 			{
@@ -635,7 +619,7 @@ double cublasNN::trainClassifyMomentum(float momentum, float rate, int batchNum 
 					cout << temp[IDX2C(j, k, mBatch[b])] << '\t';
 				cout << endl;
 			}
-			free(temp);
+			free(temp);*/
 
 			// Calculate cost
 			if((i + 1) % display == 0 && b == 0)

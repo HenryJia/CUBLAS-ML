@@ -50,6 +50,9 @@ public:
 	vector<vector<float>> predictFuncApprox() { return predict(false); }
 	vector<vector<float>> predictClassify()  { return predict(true); }
 
+	template <typename func1>
+	void randInitWeights(func1 randInitFunc);
+
 private:
 	void splitData(int batchNum);
 	float calcFinalCost(bool classify);
@@ -157,3 +160,24 @@ private:
 };
 
 #endif // CUBLASNN_H
+
+// Template Functions
+
+template <typename func1>
+void cublasNN::randInitWeights(func1 randInitFunc)
+{
+	curandGenerateUniform(gen, thetaBaseGPU, totalThetaSize);
+	for(int i = 0; i < (layerNum - 1); i++)
+	{
+		int in = layers[i] + 1;
+		int out = layers[i + 1];
+		//float epsilon = (/*sqrt(6)*/ 1 / sqrt(in/* + out*/));
+		//float epsilon2 = /*2 * */ epsilon;
+		//float negEpsilon = -epsilon;
+		//float* theta = thetaBaseGPU + thetaPos[i];
+		//cublasSscal(handle, thetaSize[i], &epsilon2, theta, 1);
+		//scaVecAddGPU(theta, negEpsilon, theta, thetaSize[i]);
+		//absVecGPU(theta, theta, thetaSize[i]);
+		randInitFunc((thetaBaseGPU + thetaPos[i]), in, out, thetaSize[i]);
+	}
+}
