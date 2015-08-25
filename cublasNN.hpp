@@ -55,10 +55,12 @@ private:
 	void splitData(int batchNum);
 	float calcFinalCost(bool classify);
 	void releaseGPUVar();
-	void forwardPropagate(float* X, int size); //Does not activate the last layer. That can be done by the caller of this function.
 	void backwardPropagate(float *output, int b  /*short for batchNum*/);
 	void validate(bool classify);
 	vector<vector<float>> predict(bool classify);
+
+	template <typename func1> //Does not activate the last layer. That can be done by the caller of this function.
+	void forwardPropagate(float* X, func1 activationHidden, int size);
 
 	float* vector2dToMat(vector<vector<float>> data);
 	float* classToBin(float* a, int m);

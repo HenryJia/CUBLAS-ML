@@ -509,7 +509,7 @@ void cublasNN::splitData(int batchNum)
 }
 
 // Wrapper for cublasSgemm to make life easier C(m,n) = A(m,k) * B(k,n)
-inline void cublasNN::matMatMultiplyGPU(const float *A, const float *B, float *C, const int a, const int b, const int c,
+void cublasNN::matMatMultiplyGPU(const float *A, const float *B, float *C, const int a, const int b, const int c,
                                  cublasOperation_t transa = CUBLAS_OP_N, cublasOperation_t transb = CUBLAS_OP_N,
                                  int lda = -1, int ldb = -1, int ldc = -1)
 {
@@ -543,7 +543,7 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, int batchNu
 			float alpha = -rate / mBatch[b];
 			float J = 0;
 
-			forwardPropagate((xSplitGPU + xPosBatch[b]), mBatch[b]);
+			forwardPropagate((xSplitGPU + xPosBatch[b]), sigmoidGPU, mBatch[b]);
 			backwardPropagate((zBaseGPU + zPos[layerNum - 2]), b);
 
 			if((i + 1) % display == 0 && b == 0)
@@ -597,7 +597,7 @@ double cublasNN::trainClassifyMomentum(float momentum, float rate, int batchNum 
 			float alpha = -rate / mBatch[b];
 			float J = 0;
 
-			forwardPropagate((xSplitGPU + xPosBatch[b]), mBatch[b]);
+			forwardPropagate((xSplitGPU + xPosBatch[b]), sigmoidGPU, mBatch[b]);
 			sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
 			backwardPropagate((aBaseGPU + aPos[layerNum - 2]), b);
 
@@ -643,27 +643,30 @@ double cublasNN::trainClassifyMomentum(float momentum, float rate, int batchNum 
 	return chrono::duration <double> (elapsed).count();
 }
 
-inline void cublasNN::forwardPropagate(float* X, int size)
+template <typename func1>
+void cublasNN::forwardPropagate(float* X, func1 activationHidden, int size)
 {
 	// Forward Propagate
 	matMatMultiplyGPU(X, (thetaBaseGPU + thetaPos[0]), (zBaseGPU + zPos[0]),
 	                  size, layers[1], (layers[0] + 1));
-	sigmoidGPU((zBaseGPU + zPos[0]), (aBaseGPU + aPos[0] + size), zSize[0]);
+	//sigmoidGPU((zBaseGPU + zPos[0]), (aBaseGPU + aPos[0] + size), zSize[0]);
+	activationHidden((zBaseGPU + zPos[0]), (aBaseGPU + aPos[0] + size), zSize[0]);
 
 	for(int j = 1; j < layerNum - 2; j++)
 	{
 		addBiasMatGPU((aBaseGPU + aPos[j - 1]), size);
 		matMatMultiplyGPU((aBaseGPU + aPos[j - 1]), (thetaBaseGPU + thetaPos[j]), (zBaseGPU + zPos[j]),
 		                  size, layers[j + 1], (layers[j] + 1));
-		sigmoidGPU((zBaseGPU + zPos[j]), (aBaseGPU + aPos[j] + size), zSize[j]);
+		//sigmoidGPU((zBaseGPU + zPos[j]), (aBaseGPU + aPos[j] + size), zSize[j]);
+		activationHidden((zBaseGPU + zPos[j]), (aBaseGPU + aPos[j] + size), zSize[j]);
 	}
 	addBiasMatGPU((aBaseGPU + aPos[layerNum - 3]), size);
 	matMatMultiplyGPU((aBaseGPU + aPos[layerNum - 3]), (thetaBaseGPU + thetaPos[layerNum - 2]),
 	                  (zBaseGPU + zPos[layerNum - 2]), size, layers[layerNum - 1], (layers[layerNum - 2] + 1));
-	//sigmoidVecGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
+	//sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
 }
 
-inline void cublasNN::backwardPropagate(float *output, int b  /*short for batchNum*/)
+void cublasNN::backwardPropagate(float *output, int b  /*short for batchNum*/)
 {
 	// Calculate the last delta
 	vecVecSubtractGPU(output, ySplitGPU + yPosBatch[b], (deltaBaseGPU + deltaPos[layerNum - 2]),
@@ -722,7 +725,7 @@ float cublasNN::calcFinalCost(bool classify)
 	cudaMalloc((void**)&aBaseGPU, totalaSize * sizeof(float));
 	cudaMalloc((void**)&JAll, aSize[layerNum - 2] * sizeof(float));
 
-	forwardPropagate(xGPU, m);
+	forwardPropagate(xGPU, sigmoidGPU, m);
 
 	// Calculate the last delta
 	if(classify == true)
@@ -823,7 +826,7 @@ void cublasNN::validate(bool classify)
 	cudaMalloc((void**)&aBaseGPU, totalaSize * sizeof(float));
 	cudaMalloc((void**)&JAll, aSize[layerNum - 2] * sizeof(float));
 
-	forwardPropagate(xValGPU, mValidate);
+	forwardPropagate(xValGPU, sigmoidGPU, mValidate);
 
 	// Calculate the last delta
 	if(classify == true)
@@ -934,7 +937,7 @@ vector<vector<float>> cublasNN::predict(bool classify)
 	cudaMalloc((void**)&zBaseGPU, totalzSize * sizeof(float));
 	cudaMalloc((void**)&aBaseGPU, totalaSize * sizeof(float));
 
-	forwardPropagate(xPreGPU, mPredict);
+	forwardPropagate(xPreGPU,  sigmoidGPU, mPredict);
 	if(classify == true)
 	{
 		sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
