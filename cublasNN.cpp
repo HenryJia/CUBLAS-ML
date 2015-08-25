@@ -586,7 +586,7 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, void (*acti
 
 	releaseGPUVar();
 
-	calcFinalCost(false);
+	calcFinalCost(false, activationHidden, NULL, NULL);
 
 	auto end = chrono::steady_clock::now();
 	auto elapsed = end - start;
@@ -647,7 +647,7 @@ double cublasNN::trainClassifyMomentum(float momentum, float rate, void (*activa
 
 	releaseGPUVar();
 
-	calcFinalCost(true);
+	calcFinalCost(true, activationHidden, activationOutput, costFunction);
 
 	auto end = chrono::steady_clock::now();
 	auto elapsed = end - start;
@@ -699,7 +699,9 @@ inline void cublasNN::backwardPropagate(float *output, void (*activationDerivati
 		                  (layers[j + 1]), (layers[j] + 1), mBatch[b], CUBLAS_OP_T, CUBLAS_OP_N, mBatch[b], mBatch[b], (layers[j + 1]));
 }
 
-float cublasNN::calcFinalCost(bool classify)
+float cublasNN::calcFinalCost(bool classify, void (*activationHidden)(const float*, float*, int),
+                              void (*activationOutput)(const float*, float*, int, int),
+                              void (*costFunction)(float*, float*, float*, int))
 {
 	float J = 0;
 	int totalzSize = 0;
@@ -735,13 +737,15 @@ float cublasNN::calcFinalCost(bool classify)
 	cudaMalloc((void**)&aBaseGPU, totalaSize * sizeof(float));
 	cudaMalloc((void**)&JAll, aSize[layerNum - 2] * sizeof(float));
 
-	forwardPropagate(xGPU, sigmoidGPU, m);
+	forwardPropagate(xGPU, activationHidden, m);
 
 	// Calculate the last delta
 	if(classify == true)
 	{
-		sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
-		negLnMaxCostGPU((aBaseGPU + aPos[layerNum - 2]), yGPU, JAll, aSize[layerNum - 2]);
+		//sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
+		activationOutput((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), m, layers[layerNum - 1]);
+		//negLnMaxCostGPU((aBaseGPU + aPos[layerNum - 2]), yGPU, JAll, aSize[layerNum - 2]);
+		costFunction((aBaseGPU + aPos[layerNum - 2]), yGPU, JAll, aSize[layerNum - 2]);
 		cublasSasum(handle, aSize[layerNum - 2], JAll, 1, &J);
 		J /= m;
 	}

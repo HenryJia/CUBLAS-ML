@@ -47,10 +47,9 @@ public:
 	                             void (*activationDerivative)(const float*, float*, int),
 	                             void (*activationOutput)(const float*, float*, int, int),
 	                             void (*costFunction)(float*, float*, float*, int), int batchNum = 1);
-	void validateFuncApprox(void (*activationHidden)(const float*, float*, int),
-	                        void (*costFunction)(float*, float*, float*, int))
+	void validateFuncApprox(void (*activationHidden)(const float*, float*, int))
 	{
-		validate(false, activationHidden, NULL, costFunction);
+		validate(false, activationHidden, NULL, NULL);
 	}
 	void validateClassify(void (*activationHidden)(const float*, float*, int),
 	                      void (*activationOutput)(const float*, float*, int, int),
@@ -69,7 +68,9 @@ public:
 
 private:
 	void splitData(int batchNum);
-	float calcFinalCost(bool classify);
+	float calcFinalCost(bool classify, void (*activationHidden)(const float*, float*, int),
+	                    void (*activationOutput)(const float*, float*, int, int),
+	                    void (*costFunction)(float*, float*, float*, int));
 	void releaseGPUVar();
 	void forwardPropagate(float* X, void (*activationHidden)(const float*, float*, int), int size); //Does not activate the last layer. That can be done by the caller of this function.
 	void backwardPropagate(float *output, void (*activationDerivative)(const float*, float*, int), int b  /*short for batchNum*/);
