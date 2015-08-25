@@ -42,11 +42,11 @@ public:
 	void addBiasDataPredict() { float* temp = addBias(xPredict, mPredict, n); free(xPredict); xPredict = temp; }
 	void copyDataGPU();
 	double trainFuncApproxMomentum(float momentum, float rate, void (*activationHidden)(const float*, float*, int),
-	                               void (*activationDerivative)(const float*, float*, int),
-	                               int batchNum = 1);
+	                               void (*activationDerivative)(const float*, float*, int), int batchNum = 1);
 	double trainClassifyMomentum(float momentum, float rate, void (*activationHidden)(const float*, float*, int),
 	                             void (*activationDerivative)(const float*, float*, int),
-	                             int batchNum = 1);
+	                             void (*activationOutput)(const float*, float*, int, int),
+	                             void (*costFunction)(float*, float*, float*, int), int batchNum = 1);
 	void validateFuncApprox() { validate(false); }
 	void validateClassify() { validate(true); }
 	vector<vector<float>> predictFuncApprox() { return predict(false); }

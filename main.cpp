@@ -116,7 +116,7 @@ int main(int argc, char **argv)
 	 * 2. Learning rate.
 	 * 3. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
 	 */
-	float gpuTime = nn->trainClassifyMomentum(0.9, 0.05, sigmoidGPU, sigmoidGradGPU, 1);
+	float gpuTime = nn->trainClassifyMomentum(0.9, 0.05, sigmoidGPU, sigmoidGradGPU, sigmoidOutputGPU, negLnMaxCostGPU, 1);
 	cout << "GPU Training " << gpuTime << " s" << endl;
 
 	nn->validateClassify();

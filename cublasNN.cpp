@@ -594,7 +594,9 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, void (*acti
 }
 
 double cublasNN::trainClassifyMomentum(float momentum, float rate, void (*activationHidden)(const float*, float*, int),
-                                       void (*activationDerivative)(const float*, float*, int), int batchNum /*= 1*/)
+                                       void (*activationDerivative)(const float*, float*, int),
+                                       void (*activationOutput)(const float*, float*, int, int),
+                                       void (*costFunction)(float*, float*, float*, int), int batchNum /*= 1*/)
 {
 	auto start = chrono::steady_clock::now();
 
@@ -615,13 +617,15 @@ double cublasNN::trainClassifyMomentum(float momentum, float rate, void (*activa
 			float J = 0;
 
 			forwardPropagate((xSplitGPU + xPosBatch[b]), activationHidden, mBatch[b]);
-			sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
+			//sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
+			activationOutput((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), mBatch[b], layers[layerNum - 1]);
 			backwardPropagate((aBaseGPU + aPos[layerNum - 2]), activationDerivative, b);
 
 			// Calculate cost
 			if((i + 1) % display == 0 && b == 0)
 			{
-				negLnMaxCostGPU((aBaseGPU + aPos[layerNum - 2]), ySplitGPU + yPosBatch[b], JAll, aSize[layerNum - 2]);
+				//negLnMaxCostGPU((aBaseGPU + aPos[layerNum - 2]), ySplitGPU + yPosBatch[b], JAll, aSize[layerNum - 2]);
+				costFunction((aBaseGPU + aPos[layerNum - 2]), ySplitGPU + yPosBatch[b], JAll, aSize[layerNum - 2]);
 				cublasSasum(handle, aSize[layerNum - 2], JAll, 1, &J);
 				J /= mBatch[b];
 				cout << "Iteration: " << i << "\t" << "Cost: " << J << endl;
