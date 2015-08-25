@@ -47,14 +47,8 @@ int main(int argc, char **argv)
 	nn->addBiasDataPredict();
 	nn->copyDataGPU();
 
-	/* Arguments for gradient descent:
-	 * 1. Learning rate
-	 * 2. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
-	 */
-	//float gpuTime = nn->trainFuncApproxGradDescent(0.0025, 4);
-
 	/* Arguments for momentum:
-	 * 1. Momentum/viscosity.
+	 * 1. Momentum/viscosity. Set to 0 for gradient descent.
 	 * 2. Learning rate.
 	 * 3. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
 	 */
@@ -104,14 +98,8 @@ int main(int argc, char **argv)
 	nn->addBiasDataPredict();
 	nn->copyDataGPU();
 
-	/* Arguments for gradient descent:
-	 * 1. Learning rate
-	 * 2. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
-	 */
-	//float gpuTime = nn->trainFuncApproxGradDescent(0.0025, 4);
-
 	/* Arguments for momentum:
-	 * 1. Momentum/viscosity.
+	 * 1. Momentum/viscosity. Set to 0 for gradient descent.
 	 * 2. Learning rate.
 	 * 3. Number of batches for mini-batch or stochastic. Set this to 1 for full batch or same as the dataset size for stochastic
 	 */

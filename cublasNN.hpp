@@ -41,9 +41,7 @@ public:
 	void addBiasDataValidate() { float* temp = addBias(xValidate, mValidate, n); free(xValidate); xValidate = temp; }
 	void addBiasDataPredict() { float* temp = addBias(xPredict, mPredict, n); free(xPredict); xPredict = temp; }
 	void copyDataGPU();
-	double trainFuncApproxGradDescent(float rate, int batchNum = 1);
 	double trainFuncApproxMomentum(float momentum, float rate, int batchNum = 1);
-	double trainClassifyGradDescent(float rate, int batchNum = 1);
 	double trainClassifyMomentum(float momentum, float rate, int batchNum = 1);
 	void validateFuncApprox() { validate(false); }
 	void validateClassify() { validate(true); }

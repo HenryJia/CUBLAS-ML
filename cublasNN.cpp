@@ -523,11 +523,6 @@ inline void cublasNN::matMatMultiplyGPU(const float *A, const float *B, float *C
 	cublasSgemm(handle, transa, transb, a, b, c, &alpha, A, lda, B, ldb, &beta, C, ldc);
 }
 
-double cublasNN::trainFuncApproxGradDescent(float rate, int batchNum /*= 1*/)
-{
-	return trainFuncApproxMomentum(0, rate, batchNum);
-}
-
 double cublasNN::trainFuncApproxMomentum(float momentum, float rate, int batchNum /*= 1*/)
 {
 	auto start = chrono::steady_clock::now();
@@ -580,11 +575,6 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, int batchNu
 	auto end = chrono::steady_clock::now();
 	auto elapsed = end - start;
 	return chrono::duration <double> (elapsed).count();
-}
-
-double cublasNN::trainClassifyGradDescent(float rate, int batchNum /*= 1*/)
-{
-	return trainClassifyMomentum(0, rate, batchNum);
 }
 
 double cublasNN::trainClassifyMomentum(float momentum, float rate, int batchNum /*= 1*/)
