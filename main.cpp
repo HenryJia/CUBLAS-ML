@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 	nn->normaliseData();
 	nn->normaliseValidateData();
 	nn->normalisePredictData();
-	nn->setIters(1000);
+	nn->setIters(200);
 	nn->setDisplay(1);
 	nn->addBiasData();
 	nn->addBiasDataValidate();
@@ -119,7 +119,7 @@ int main(int argc, char **argv)
 	float gpuTime = nn->trainClassifyMomentum(0.9, 0.05, sigmoidGPU, sigmoidGradGPU, sigmoidOutputGPU, negLnMaxCostGPU, 1);
 	cout << "GPU Training " << gpuTime << " s" << endl;
 
-	nn->validateClassify();
+	nn->validateClassify(sigmoidGPU, sigmoidOutputGPU, negLnMaxCostGPU);
 
 	cout << "Write CSV" << endl;
 	vector<vector<float>> result = nn->predictClassify();

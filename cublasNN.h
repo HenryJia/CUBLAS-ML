@@ -47,10 +47,25 @@ public:
 	                             void (*activationDerivative)(const float*, float*, int),
 	                             void (*activationOutput)(const float*, float*, int, int),
 	                             void (*costFunction)(float*, float*, float*, int), int batchNum = 1);
-	void validateFuncApprox() { validate(false); }
-	void validateClassify() { validate(true); }
-	vector<vector<float>> predictFuncApprox() { return predict(false); }
-	vector<vector<float>> predictClassify()  { return predict(true); }
+	void validateFuncApprox(void (*activationHidden)(const float*, float*, int),
+	                        void (*costFunction)(float*, float*, float*, int))
+	{
+		validate(false, activationHidden, NULL, costFunction);
+	}
+	void validateClassify(void (*activationHidden)(const float*, float*, int),
+	                      void (*activationOutput)(const float*, float*, int, int),
+	                      void (*costFunction)(float*, float*, float*, int))
+	{
+		validate(true, activationHidden, activationOutput, costFunction);
+	}
+	vector<vector<float>> predictFuncApprox()
+	{
+		return predict(false);
+	}
+	vector<vector<float>> predictClassify()
+	{
+		return predict(true);
+	}
 
 private:
 	void splitData(int batchNum);
@@ -58,7 +73,9 @@ private:
 	void releaseGPUVar();
 	void forwardPropagate(float* X, void (*activationHidden)(const float*, float*, int), int size); //Does not activate the last layer. That can be done by the caller of this function.
 	void backwardPropagate(float *output, void (*activationDerivative)(const float*, float*, int), int b  /*short for batchNum*/);
-	void validate(bool classify);
+	void validate(bool classify, void (*activationHidden)(const float*, float*, int),
+	              void (*activationOutput)(const float*, float*, int, int),
+	              void (*costFunction)(float*, float*, float*, int));
 	vector<vector<float>> predict(bool classify);
 
 	float* vector2dToMat(vector<vector<float>> data);

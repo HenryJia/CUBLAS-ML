@@ -675,7 +675,7 @@ inline void cublasNN::forwardPropagate(float* X, void (*activationHidden)(const 
 	//sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
 }
 
-inline void cublasNN::backwardPropagate(float *output, void (*activationDerivative)(const float*, float*, int), int b  /*short for batchNum*/)
+inline void cublasNN::backwardPropagate(float *output, void (*activationDerivative)(const float*, float*, int), int b)
 {
 	// Calculate the last delta
 	vecVecSubtractGPU(output, ySplitGPU + yPosBatch[b], (deltaBaseGPU + deltaPos[layerNum - 2]),
@@ -787,7 +787,9 @@ float cublasNN::calcFinalCost(bool classify)
 	return J;
 }
 
-void cublasNN::validate(bool classify)
+void cublasNN::validate(bool classify, void (*activationHidden)(const float*, float*, int),
+                        void (*activationOutput)(const float*, float*, int, int),
+                        void (*costFunction)(float*, float*, float*, int))
 {
 	float* yValGPU;
 	float* yValBinGPU;
@@ -836,13 +838,15 @@ void cublasNN::validate(bool classify)
 	cudaMalloc((void**)&aBaseGPU, totalaSize * sizeof(float));
 	cudaMalloc((void**)&JAll, aSize[layerNum - 2] * sizeof(float));
 
-	forwardPropagate(xValGPU, sigmoidGPU, mValidate);
+	forwardPropagate(xValGPU, activationHidden, mValidate);
 
 	// Calculate the last delta
 	if(classify == true)
 	{
-		sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
-		negLnMaxCostGPU((aBaseGPU + aPos[layerNum - 2]), yValBinGPU, JAll, aSize[layerNum - 2]);
+		//sigmoidGPU((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), zSize[layerNum - 2]);
+		activationOutput((zBaseGPU + zPos[layerNum - 2]), (aBaseGPU + aPos[layerNum - 2]), mValidate, layers[layerNum - 1]);
+		//negLnMaxCostGPU((aBaseGPU + aPos[layerNum - 2]), yValBinGPU, JAll, aSize[layerNum - 2]);
+		costFunction((aBaseGPU + aPos[layerNum - 2]), yValBinGPU, JAll, aSize[layerNum - 2]);
 		cublasSasum(handle, aSize[layerNum - 2], JAll, 1, &J);
 		J /= mValidate;
 	}
