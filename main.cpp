@@ -96,7 +96,7 @@ int main(int argc, char **argv)
 	nn->normaliseData();
 	nn->normaliseValidateData();
 	nn->normalisePredictData();
-	nn->setIters(100);
+	nn->setIters(1000);
 	nn->setDisplay(1);
 	nn->addBiasData();
 	nn->addBiasDataValidate();

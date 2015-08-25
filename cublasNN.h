@@ -54,7 +54,7 @@ private:
 	void splitData(int batchNum);
 	float calcFinalCost(bool classify);
 	void releaseGPUVar();
-	void forwardPropagate(float* X, int size); //Does not activate the last layer. That can be done by the caller of this function.
+	void forwardPropagate(float* X, void (*activationHidden)(const float*, float*, int), int size); //Does not activate the last layer. That can be done by the caller of this function.
 	void backwardPropagate(float *output, int b  /*short for batchNum*/);
 	void validate(bool classify);
 	vector<vector<float>> predict(bool classify);
