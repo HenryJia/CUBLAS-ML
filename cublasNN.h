@@ -30,7 +30,7 @@ public:
 	void setData(vector<vector<float>> xVec, vector<vector<float>> yVec, bool classify);
 	void setValidateData(vector<vector<float>> xVec, vector<vector<float>> yVec, bool classify);
 	void setPredictData(vector<vector<float>> xVec);
-	void setLayers(int* layers, int lNum);
+	void setLayers(int* l, int lNum, void (*randInitWeights)(float*, int, int, int));
 	void setIters(int i) { iters = i; }
 	void setDisplay(int i) { display = i; }
 	void setLambda(int l) { lambda = l; }
@@ -41,23 +41,47 @@ public:
 	void addBiasDataValidate() { float* temp = addBias(xValidate, mValidate, n); free(xValidate); xValidate = temp; }
 	void addBiasDataPredict() { float* temp = addBias(xPredict, mPredict, n); free(xPredict); xPredict = temp; }
 	void copyDataGPU();
-	double trainFuncApproxGradDescent(float rate, int batchNum = 1);
-	double trainFuncApproxMomentum(float momentum, float rate, int batchNum = 1);
-	double trainClassifyGradDescent(float rate, int batchNum = 1);
-	double trainClassifyMomentum(float momentum, float rate, int batchNum = 1);
-	void validateFuncApprox() { validate(false); }
-	void validateClassify() { validate(true); }
-	vector<vector<float>> predictFuncApprox() { return predict(false); }
-	vector<vector<float>> predictClassify()  { return predict(true); }
+
+	double trainFuncApproxMomentum(float momentum, float rate, void (*activationHidden)(const float*, float*, int),
+	                               void (*activationDerivative)(const float*, float*, int), int batchNum = 1);
+	double trainClassifyMomentum(float momentum, float rate, void (*activationHidden)(const float*, float*, int),
+	                             void (*activationDerivative)(const float*, float*, int),
+	                             void (*activationOutput)(const float*, float*, int, int),
+	                             void (*costFunction)(float*, float*, float*, int), int batchNum = 1);
+	void validateFuncApprox(void (*activationHidden)(const float*, float*, int))
+	{
+		validate(false, activationHidden, NULL, NULL);
+	}
+	void validateClassify(void (*activationHidden)(const float*, float*, int),
+	                      void (*activationOutput)(const float*, float*, int, int),
+	                      void (*costFunction)(float*, float*, float*, int))
+	{
+		validate(true, activationHidden, activationOutput, costFunction);
+	}
+	vector<vector<float>> predictFuncApprox(void (*activationHidden)(const float*, float*, int))
+	{
+		return predict(false, activationHidden, NULL);
+	}
+	vector<vector<float>> predictClassify(void (*activationHidden)(const float*, float*, int),
+	                                      void (*activationOutput)(const float*, float*, int, int))
+	{
+		return predict(true, activationHidden, activationOutput);
+	}
 
 private:
 	void splitData(int batchNum);
-	float calcFinalCost(bool classify);
+	float calcFinalCost(bool classify, void (*activationHidden)(const float*, float*, int),
+	                    void (*activationOutput)(const float*, float*, int, int),
+	                    void (*costFunction)(float*, float*, float*, int));
 	void releaseGPUVar();
-	void forwardPropagate(float* X, int size); //Does not activate the last layer. That can be done by the caller of this function.
-	void backwardPropagate(float *output, int b  /*short for batchNum*/);
-	void validate(bool classify);
-	vector<vector<float>> predict(bool classify);
+	//Does not activate the last layer. That can be done by the caller of this function.
+	void forwardPropagate(float* X, void (*activationHidden)(const float*, float*, int), int size);
+	void backwardPropagate(float *output, void (*activationDerivative)(const float*, float*, int), int b  /*short for batchNum*/);
+	void validate(bool classify, void (*activationHidden)(const float*, float*, int),
+	              void (*activationOutput)(const float*, float*, int, int),
+	              void (*costFunction)(float*, float*, float*, int));
+	vector<vector<float>> predict(bool classify, void (*activationHidden)(const float*, float*, int),
+	                              void (*activationOutput)(const float*, float*, int, int));
 
 	float* vector2dToMat(vector<vector<float>> data);
 	float* classToBin(float* a, int m);
@@ -71,10 +95,21 @@ private:
 	float* mean(float* data, int a, int b);
 	float* stddev(float* data, float* mean, int a, int b);
 
-	// GPU Linear Algebra Functions
 	void allocVarGPU(int batchNum);
+	// Wrapper for cublasSgemm to make life easier C(m,n) = A(m,k) * B(k,n)
 	void matMatMultiplyGPU(const float *A, const float *B, float *C, const int a, const int b, const int c,
-	                       cublasOperation_t transa, cublasOperation_t transb, int lda, int ldb, int ldc);
+	                                 cublasOperation_t transa = CUBLAS_OP_N, cublasOperation_t transb = CUBLAS_OP_N,
+	                                 int lda = -1, int ldb = -1, int ldc = -1)
+	{
+		const float alpha = 1, beta = 0;
+		//int lda = m, int ldb = k, int ldc = m
+		(lda < 0 && (lda = a));
+		(ldb < 0 && (ldb = c));
+		(ldc < 0 && (ldc = a));
+		// Do the actual multiplication
+		cublasSgemm(handle, transa, transb, a, b, c, &alpha, A, lda, B, ldb, &beta, C, ldc);
+	}
+
 
 	float alpha;
 	float lambda;
