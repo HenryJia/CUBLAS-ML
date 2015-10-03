@@ -737,8 +737,6 @@ float cublasNN::calcFinalCost(bool classify, void (*activationHidden)(const floa
 	else
 	{
 		vecVecSubtractGPU((zBaseGPU + zPos[layerNum - 2]), yGPU, JAll, zSize[layerNum - 2]);
-		float* temp = (float*)malloc(zSize[layerNum - 2] * sizeof(float));
-		cudaMemcpy(temp, (zBaseGPU + zPos[layerNum - 2]), zSize[layerNum - 2] * sizeof(float), cudaMemcpyDeviceToHost);
 		cublasSdot(handle, zSize[layerNum - 2], JAll, 1, JAll, 1, &J);
 		J /= (2 * m);
 		cudaFree(deltaBaseGPU);
