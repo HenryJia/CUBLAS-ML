@@ -9,7 +9,7 @@ LibPaths = -L. -L/opt/cuda/lib64/
 Libs = -lcuda -lcudart -lcurand -lcublas 
 LFLAGS = $(LibPaths) $(Libs)
 
-CUBLAS-ML: Directories randinitweights.cu.o costfunctions.cu.o activations.cu.o kernels.cu.o cublasNN.cpp.o main.cpp.o
+CUBLAS-ML: Directories randinitweights.cu.o costfunctions.cu.o activations.cu.o kernels.cu.o cublasNN.cpp.o main.cpp.o #convnet.cu.o
 	$(CXX) -o $(OutDir)CUBLAS-ML $(OutDir)main.cpp.o $(OutDir)cublasNN.cpp.o $(OutDir)randinitweights.cu.o $(OutDir)costfunctions.cu.o \
 	$(OutDir)activations.cu.o $(OutDir)kernels.cu.o $(LFLAGS)
 
@@ -18,6 +18,9 @@ Directories:
 
 kernels.cu.o: #kernels.cu
 	$(NVCC) -c $(NVCCFLAGS) kernels.cu -o $(OutDir)kernels.cu.o
+
+#convnet.cu.o: #convnet.cu
+	#$(NVCC) -c $(NVCCFLAGS) convnet.cu -o $(OutDir)convnet.cu.o
 
 activations.cu.o: #kernels.cu
 	$(NVCC) -c $(NVCCFLAGS) activations.cu -o $(OutDir)activations.cu.o
