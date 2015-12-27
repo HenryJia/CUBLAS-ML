@@ -28,6 +28,7 @@ public:
 	vector<vector<float>> readCSV(string fileName, bool header, float &time);
 	double writeCSV(vector<vector<float>> data, string filename);
 	void setData(vector<vector<float>> xVec, vector<vector<float>> yVec, bool classify);
+	void setData(vector<float> xVec, vector<float> yVec, int a, int b, int bOut, bool classify);
 	void setValidateData(vector<vector<float>> xVec, vector<vector<float>> yVec, bool classify);
 	void setPredictData(vector<vector<float>> xVec);
 	void setLayers(int* l, int lNum, void (*randInitWeights)(float*, int, int, int));
@@ -84,6 +85,7 @@ private:
 	                              void (*activationOutput)(const float*, float*, int, int));
 
 	float* vector2dToMat(vector<vector<float>> data);
+	float* vectorRowMajorToMat(vector<float> result, int m, int n);
 	float* classToBin(float* a, int m);
 	void normalise(float* data, int a, int b);
 	float* copyToGPU(float* data, int a, int b);

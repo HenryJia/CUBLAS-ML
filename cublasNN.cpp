@@ -132,6 +132,23 @@ float* cublasNN::vector2dToMat(vector<vector<float>> data)
 	return result;
 }
 
+float* cublasNN::vectorRowMajorToMat(vector<float> data, int m, int n)
+{
+	float* result;
+
+	result = (float*)malloc(m * n * sizeof(*result));
+	if(!result)
+	{
+		cout << "Malloc Failed" << endl;
+		return nullptr;
+	}
+	for(int i = 0; i < m; i++)
+		for(int j = 0; j < n; j++)
+			result[IDX2C(i, j, n)] = data[i * n + j];
+
+	return result;
+}
+
 float* cublasNN::classToBin(float* a, int m)
 {
 	float* yBin = (float*)malloc(m * layers[layerNum - 1] * sizeof(yBin));
@@ -161,6 +178,27 @@ void cublasNN::setData(vector<vector<float>> xVec, vector<vector<float>> yVec, b
 	{
 		float *yRaw = vector2dToMat(yVec);
 		y = classToBin(yRaw, m);
+		free(yRaw);
+	}
+	xOld = true;
+}
+
+void cublasNN::setData(vector<float> xVec, vector<float> yVec, int a, int b, int bOut, bool classify)
+{
+	m = a;
+	n = b;
+	if(xOld)
+	{
+		free(x);
+		free(y);
+	}
+	x = vectorRowMajorToMat(xVec, a, b);
+	if(classify == false)
+		y = vectorRowMajorToMat(yVec, a, bOut);
+	else
+	{
+		float *yRaw = vectorRowMajorToMat(yVec, a, bOut);
+		y = classToBin(yRaw, a);
 		free(yRaw);
 	}
 	xOld = true;
@@ -508,7 +546,6 @@ void cublasNN::splitData(int batchNum)
 		cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_T, mBatch[b], n + 1, &alpha2, xTransGPU + xPosBatch[b],
 		            n + 1, &beta2, xTransGPU + xPosBatch[b], n + 1, xSplitGPU + xPosBatch[b], mBatch[b]);
 	}
-
 	cudaMalloc((void**)&yTransGPU, m * layers[layerNum - 1] * sizeof(float));
 	cudaMalloc((void**)&ySplitGPU, m * layers[layerNum - 1] * sizeof(float));
 	cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_T, layers[layerNum - 1], m, &alpha2, yGPU, m, &beta2, yGPU, m,
@@ -547,6 +584,25 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, void (*acti
 			forwardPropagate((xSplitGPU + xPosBatch[b]), activationHidden, mBatch[b]);
 			backwardPropagate((zBaseGPU + zPos[layerNum - 2]), activationDerivative, b);
 
+			/*float* temp = (float*)malloc(m * layers[layerNum - 1] * sizeof(float));
+			cudaMemcpy(temp, (ySplitGPU + yPosBatch[0]), mBatch[b] * layers[layerNum - 1] * sizeof(float), cudaMemcpyDeviceToHost);
+			for(int a = 0; a < 5; a++)
+			{
+				for(int c = 0; c < 5; c++)
+					cout << temp[IDX2C(a, c, mBatch[b])] << '\t';
+				cout << endl;
+			}*/
+
+			/*if((i + 1) % display == 0 && b == 0)
+			{
+				for(int out = 0; out < layers[layerNum - 1]; out++)
+				{
+					cublasSdot(handle, deltaSize[layerNum - 2], (deltaBaseGPU + deltaPos[layerNum - 2] + out * mBatch[b]), 1,
+					           (deltaBaseGPU + deltaPos[layerNum - 2] + out * mBatch[b]), 1, &J);
+					J /= (2 * mBatch[b]);
+					cout << "Iteration: " << i << "\t" << "Output Unit " << out << '\t' << "Cost: " << J << endl;
+				}
+			}*/
 			if((i + 1) % display == 0 && b == 0)
 			{
 				cublasSdot(handle, deltaSize[layerNum - 2], (deltaBaseGPU + deltaPos[layerNum - 2]), 1,
@@ -554,6 +610,16 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, void (*acti
 				J /= (2 * mBatch[b]);
 				cout << "Iteration: " << i << "\t" << "Cost: " << J << endl;
 			}
+
+			/*free(temp);
+			temp = (float*)malloc(m * layers[layerNum - 1] * sizeof(float));
+			cudaMemcpy(temp, (ySplitGPU + yPosBatch[0]), mBatch[b] * layers[layerNum - 1] * sizeof(float), cudaMemcpyDeviceToHost);
+			for(int a = 0; a < 5; a++)
+			{
+				for(int c = 0; c < 5; c++)
+					cout << temp[IDX2C(a, c, mBatch[b])] << '\t';
+				cout << endl;
+			}*/
 
 			for(int j = 0; j < layerNum - 1; j++)
 			{
@@ -564,6 +630,7 @@ double cublasNN::trainFuncApproxMomentum(float momentum, float rate, void (*acti
 				            (layers[j] + 1), &alpha2, (velocity + thetaPos[j]), (layers[j] + 1), (thetaBaseGPU + thetaPos[j]),
 				            (layers[j] + 1));
 			}
+
 		}
 	}
 
@@ -663,8 +730,8 @@ inline void cublasNN::forwardPropagate(float* X, void (*activationHidden)(const 
 inline void cublasNN::backwardPropagate(float *output, void (*activationDerivative)(const float*, float*, int), int b)
 {
 	// Calculate the last delta
-	vecVecSubtractGPU(output, ySplitGPU + yPosBatch[b], (deltaBaseGPU + deltaPos[layerNum - 2]),
-	                  aSize[layerNum - 2]);
+	vecVecSubtractGPU(output, (ySplitGPU + yPosBatch[b]), (deltaBaseGPU + deltaPos[layerNum - 2]),
+	                  mBatch[b] * layers[layerNum - 1]);
 
 	// Calculate remaining deltas via backpropagation
 	for(int j = layerNum - 3; j >= 0; j--)
